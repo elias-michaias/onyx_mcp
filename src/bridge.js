@@ -213,11 +213,6 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     httpServerUrl = process.env.HTTP_SERVER_URL;
   }
   
-  console.log(`🌉 Starting Onyx MCP Bridge...`);
-  console.log(`🔗 Connecting to: ${httpServerUrl}`);
-  console.log(`💡 Usage: Configure Claude Desktop to use this bridge process`);
-  console.log(``);
-  
   const bridge = new McpHttpBridge(httpServerUrl);
 
   bridge.start().catch((error) => {
