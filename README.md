@@ -144,7 +144,7 @@ You can connect to the Onyx MCP in two ways:
  "mcpServers": {
    "onyx_mcp": {
      "command": "node",
-     "args": ["/path/to/onyx_mcp/src/bridge.js", "--url", "https://mcp.onyxlang.io"],
+     "args": ["/path/to/onyx_mcp/src/index.js", "bridge", "--url", "https://mcp.onyxlang.io"],
    }
  }
 }
@@ -163,7 +163,7 @@ For testing the bridge locally:
      "mcpServers": {
        "onyx_mcp": {
          "command": "node",
-         "args": ["/path/to/onyx_mcp/src/bridge.js", "--url", "http://localhost:3002"]
+         "args": ["/path/to/onyx_mcp/src/index.js", "bridge", "--url", "http://localhost:3002"]
        }
      }
    }
