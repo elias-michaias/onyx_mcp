@@ -4,8 +4,38 @@ import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-export async function crawlGitHub(repositoryUrls, options = {}) {
+// Default Onyx repositories to crawl
+const DEFAULT_ONYX_REPOSITORIES = [
+  'onyx-lang/onyx',
+  'onyx-lang/onyx-website', 
+  'onyx-lang/onyx-examples',
+  'onyx-lang/pkg-glfw3',
+  'onyx-lang/pkg-http-client',
+  'onyx-lang/pkg-http-server',
+  'onyx-lang/pkg-json-rpc',
+  'onyx-lang/pkg-ncurses',
+  'onyx-lang/pkg-openal',
+  'onyx-lang/pkg-opencl',
+  'onyx-lang/pkg-opengles',
+  'onyx-lang/pkg-openssl',
+  'onyx-lang/pkg-otmp',
+  'onyx-lang/pkg-perlin',
+  'onyx-lang/pkg-postgres-orm',
+  'onyx-lang/pkg-postgres',
+  'onyx-lang/pkg-protobuf',
+  'onyx-lang/pkg-qoi',
+  'onyx-lang/pkg-raylib',
+  'onyx-lang/pkg-stb_image',
+  'onyx-lang/pkg-stb_truetype',
+  'onyx-lang/pkg-webgl2'
+];
+
+export async function crawlGitHub(repositoryUrls = null, options = {}) {
   const { limit = 20 } = options;
+  
+  // Use provided repositories or defaults
+  const reposToUse = repositoryUrls && repositoryUrls.length > 0 ? 
+    repositoryUrls : DEFAULT_ONYX_REPOSITORIES;
   
   const crawler = new GitHubCrawler({
     outputDir: path.join(__dirname, '../../data/github'),
@@ -14,7 +44,7 @@ export async function crawlGitHub(repositoryUrls, options = {}) {
     maxFileSize: 100000
   });
 
-  return await crawler.crawlAllRepositories(limit, repositoryUrls);
+  return await crawler.crawlAllRepositories(limit, reposToUse);
 }
 
 class GitHubCrawler {

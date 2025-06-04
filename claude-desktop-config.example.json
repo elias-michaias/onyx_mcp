@@ -1,9 +1,0 @@
-{
-  "mcpServers": {
-    "onyx-enhanced": {
-      "command": "node",
-      "args": ["/path/to/onyx_mcp/src/server.js"],
-    }
-  }
-}
-

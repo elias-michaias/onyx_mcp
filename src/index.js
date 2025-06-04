@@ -10,6 +10,7 @@ import path from 'path';
 
 // Import core modules
 import { startMcpServer } from './mcp-server.js';
+import { OnyxMcpHttpServer } from './mcp-http.js';
 import { crawlDocumentation } from './crawlers/docs.js';
 import { crawlGitHub } from './crawlers/github.js';
 import { crawlUrl } from './crawlers/urls.js';
@@ -20,8 +21,11 @@ const program = new Command();
 
 program
   .name('onyx-mcp')
-  .description('Enhanced MCP server for Onyx programming language')
+  .description('MCP server for Onyx programming language - search and query functionality only')
   .version('2.0.0');
+
+// NOTE: This MCP server is designed for search and query operations only.
+// Crawling functionality exists in the crawler files but is not exposed through MCP interface.
 
 // MCP Server command
 program
@@ -32,10 +36,48 @@ program
     startMcpServer(options.dev);
   });
 
-// Crawl commands
+// HTTP Server command  
+program
+  .command('http')
+  .description('Start the HTTP server for REST API access')
+  .option('-p, --port <number>', 'Port number', '3001')
+  .option('-d, --dev', 'Enable development mode')
+  .action(async (options) => {
+    console.log('🌐 Starting Onyx MCP HTTP Server...');
+    const port = parseInt(options.port);
+    const server = new OnyxMcpHttpServer(port);
+    
+    try {
+      await server.start();
+      if (options.dev) {
+        console.log('📊 Development mode enabled');
+      }
+    } catch (error) {
+      console.error('❌ Failed to start HTTP server:', error.message);
+      process.exit(1);
+    }
+  });
+
+// Bridge command
+program
+  .command('bridge')
+  .description('Start the MCP-to-HTTP bridge (connects MCP to HTTP server)')
+  .option('-u, --url <url>', 'HTTP server URL', 'http://localhost:3001')
+  .action(async (options) => {
+    console.log('🌉 Starting MCP-to-HTTP Bridge...');
+    
+    // Set environment variable for the bridge
+    process.env.HTTP_SERVER_URL = options.url;
+    
+    // Import and start the bridge
+    const { default: startBridge } = await import('./bridge.js');
+    await startBridge();
+  });
+
+// Crawl commands - available in CLI but NOT through MCP interface
 const crawlCmd = program
   .command('crawl')
-  .description('Crawl various data sources');
+  .description('Crawl various data sources to populate MCP data');
 
 crawlCmd
   .command('docs')
@@ -64,43 +106,19 @@ crawlCmd
 
 crawlCmd
   .command('all [repositories...]')
-  .description('Crawl all data sources')
+  .description('Crawl all data sources to populate MCP')
   .option('-f, --force', 'Force recrawl documentation')
   .option('-l, --limit <number>', 'Repository limit for GitHub crawl', '20')
   .action(async (repositories, options) => {
-    console.log('🔄 Starting comprehensive crawl...');
+    console.log('🔄 Starting comprehensive crawl to populate MCP data...');
     
     // Crawl docs
     await crawlDocumentation({ force: options.force });
     
-    // Crawl GitHub with provided repos or defaults
-    const repos = repositories.length > 0 ? repositories : [
-      'onyx-lang/onyx',
-      'onyx-lang/onyx-examples',
-      'onyx-lang/onyx-website',
-      'onyx-lang/pkg-glfw3',
-      'onyx-lang/pkg-http-client',
-      'onyx-lang/pkg-http-server',
-      'onyx-lang/pkg-json-rpc',
-      'onyx-lang/pkg-ncurses',
-      'onyx-lang/pkg-openal',
-      'onyx-lang/pkg-opencl',
-      'onyx-lang/pkg-opengles',
-      'onyx-lang/pkg-openssl',
-      'onyx-lang/pkg-otmp',
-      'onyx-lang/pkg-perlin',
-      'onyx-lang/pkg-postgres-orm',
-      'onyx-lang/pkg-postgres',
-      'onyx-lang/pkg-protobuf',
-      'onyx-lang/pkg-qoi',
-      'onyx-lang/pkg-raylib',
-      'onyx-lang/pkg-stb_image',
-      'onyx-lang/pkg-stb_truetype',
-      'onyx-lang/pkg-webgl2'
-    ];
-    await crawlGitHub(repos, { limit: parseInt(options.limit) });
+    // Crawl GitHub - let github.js handle defaults if no repos provided
+    await crawlGitHub(repositories.length > 0 ? repositories : null, { limit: parseInt(options.limit) });
     
-    console.log('✅ Comprehensive crawl complete!');
+    console.log('✅ Comprehensive crawl complete! MCP is now ready to use.');
   });
 
 // Test command

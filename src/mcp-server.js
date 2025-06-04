@@ -11,10 +11,33 @@ import {
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import GitHubCrawler from './crawlers/github.js';
 import { SearchEngine } from './core/search-engine.js';
+import GitHubCrawler from './crawlers/github.js';
 import { UrlCrawler } from './crawlers/urls.js';
 import { DocumentationCrawler } from './crawlers/docs.js';
+
+// =============================================================================
+// CONFIGURABLE CONTEXT MESSAGE
+// =============================================================================
+// This message will be prepended to all MCP tool responses.
+// Modify this section to customize the context provided to the assistant.
+const GLOBAL_CONTEXT_MESSAGE = `You are assisting with Onyx programming language queries. Onyx is a modern systems programming language focused on simplicity and performance.
+
+Key Onyx characteristics:
+- Compiled systems language with automatic memory management
+- Simple syntax inspired by Go and Rust
+- Strong type system with type inference
+- Built-in support for data-oriented programming
+- Extensive standard library and package ecosystem
+- Cross-platform support (Linux, Windows, macOS)
+
+When providing code examples or explanations, focus on:
+- Clear, idiomatic Onyx code
+- Practical usage patterns
+- Performance considerations where relevant
+- Integration with Onyx's package system
+
+The following search results contain relevant information for the user's query:`;
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -41,7 +64,7 @@ class OnyxMcpServer {
     this.server.setRequestHandler(ListToolsRequestSchema, async () => {
       return {
         tools: [
-          // Original documentation tools
+          // Documentation search tools
           {
             name: 'search_onyx_docs',
             description: 'Search official Onyx programming language documentation',
@@ -52,16 +75,6 @@ class OnyxMcpServer {
                 limit: { type: 'number', description: 'Maximum number of results', default: 5 }
               },
               required: ['query']
-            }
-          },
-          {
-            name: 'crawl_onyx_docs',
-            description: 'Crawl and update official Onyx documentation',
-            inputSchema: {
-              type: 'object',
-              properties: {
-                force: { type: 'boolean', description: 'Force recrawl even if recently updated', default: false }
-              }
             }
           },
 
@@ -100,17 +113,7 @@ class OnyxMcpServer {
               }
             }
           },
-          {
-            name: 'crawl_github_repos',
-            description: 'Crawl GitHub repositories for Onyx code examples',
-            inputSchema: {
-              type: 'object',
-              properties: {
-                repoLimit: { type: 'number', description: 'Maximum number of repositories to crawl', default: 20 },
-                force: { type: 'boolean', description: 'Force recrawl even if recently updated', default: false }
-              }
-            }
-          },
+
           {
             name: 'list_github_repos',
             description: 'List all discovered GitHub repositories with Onyx code',
@@ -122,19 +125,7 @@ class OnyxMcpServer {
             }
           },
 
-          // Arbitrary URL tools
-          {
-            name: 'crawl_url',
-            description: 'Crawl and extract content from any URL',
-            inputSchema: {
-              type: 'object',
-              properties: {
-                url: { type: 'string', description: 'URL to crawl' },
-                extractCode: { type: 'boolean', description: 'Extract code blocks specifically', default: true }
-              },
-              required: ['url']
-            }
-          },
+
 
           // Unified search tools
           {
@@ -204,9 +195,6 @@ class OnyxMcpServer {
           // Documentation tools
           case 'search_onyx_docs':
             return await this.searchOnyxDocs(args.query, args.limit);
-          
-          case 'crawl_onyx_docs':
-            return await this.crawlOnyxDocs(args.force);
 
           // GitHub tools
           case 'search_github_examples':
@@ -218,15 +206,8 @@ class OnyxMcpServer {
           case 'get_onyx_structs':
             return await this.getOnyxStructs(args.structName, args.limit);
           
-          case 'crawl_github_repos':
-            return await this.crawlGitHubRepos(args.repoLimit, args.force);
-          
           case 'list_github_repos':
             return await this.listGitHubRepos(args.sortBy);
-
-          // URL tools
-          case 'crawl_url':
-            return await this.crawlUrl(args.url, args.extractCode);
 
           // Unified search
           case 'search_all_sources':
@@ -246,90 +227,56 @@ class OnyxMcpServer {
             throw new Error(`Unknown tool: ${name}`);
         }
       } catch (error) {
-        return {
-          content: [{
-            type: 'text',
-            text: `Error: ${error.message}`
-          }]
-        };
+        return this.formatResponse(
+          `Error: ${error.message}`,
+          'An error occurred while processing your request'
+        );
       }
     });
+  }
+
+  // Helper method to format responses with context
+  formatResponse(content, toolSpecificMessage = '') {
+    const fullMessage = GLOBAL_CONTEXT_MESSAGE + 
+      (toolSpecificMessage ? '\n\n' + toolSpecificMessage : '') + 
+      '\n\n' + content;
+    
+    return {
+      content: [{
+        type: 'text',
+        text: fullMessage
+      }]
+    };
   }
 
   // Documentation methods
   async searchOnyxDocs(query, limit = 5) {
     const results = await this.searchEngine.searchDocs(query, limit);
-    return {
-      content: [{
-        type: 'text',
-        text: JSON.stringify(results, null, 2)
-      }]
-    };
-  }
-
-  async crawlOnyxDocs(force = false) {
-    const { crawlDocumentation } = await import('./crawlers/docs.js');
-    await crawlDocumentation({ force });
-    
-    return {
-      content: [{
-        type: 'text',
-        text: 'Successfully crawled Onyx documentation. Use search_onyx_docs to query the updated content.'
-      }]
-    };
+    const toolMessage = `Searching official Onyx documentation for: "${query}"`;
+    return this.formatResponse(JSON.stringify(results, null, 2), toolMessage);
   }
 
   // GitHub methods
   async searchGitHubExamples(topic, limit = 5) {
     const results = await this.searchEngine.searchGitHubExamples(topic, limit);
-    
-    return {
-      content: [{
-        type: 'text',
-        text: JSON.stringify(results, null, 2)
-      }]
-    };
+    const toolMessage = `Searching GitHub repositories for Onyx code examples related to: "${topic}"`;
+    return this.formatResponse(JSON.stringify(results, null, 2), toolMessage);
   }
 
   async getOnyxFunctions(functionName, limit = 10) {
     const results = await this.searchEngine.getOnyxFunctionExamples(functionName, limit);
-    
-    return {
-      content: [{
-        type: 'text',
-        text: JSON.stringify(results, null, 2)
-      }]
-    };
+    const toolMessage = functionName ? 
+      `Searching for Onyx function examples: "${functionName}"` :
+      'Searching for all available Onyx function examples';
+    return this.formatResponse(JSON.stringify(results, null, 2), toolMessage);
   }
 
   async getOnyxStructs(structName, limit = 10) {
     const results = await this.searchEngine.getOnyxStructExamples(structName, limit);
-    
-    return {
-      content: [{
-        type: 'text',
-        text: JSON.stringify(results, null, 2)
-      }]
-    };
-  }
-
-  async crawlGitHubRepos(repoLimit = 20, force = false) {
-    const { crawlGitHub } = await import('./crawlers/github.js');
-    
-    const defaultRepos = [
-      'onyx-lang/onyx',
-      'onyx-lang/pkg', 
-      'onyx-lang/examples'
-    ];
-
-    await crawlGitHub(defaultRepos, { limit: repoLimit });
-
-    return {
-      content: [{
-        type: 'text',
-        text: `Successfully crawled ${repoLimit} GitHub repositories for Onyx code. Use search_github_examples to explore the examples.`
-      }]
-    };
+    const toolMessage = structName ? 
+      `Searching for Onyx struct definitions: "${structName}"` :
+      'Searching for all available Onyx struct definitions';
+    return this.formatResponse(JSON.stringify(results, null, 2), toolMessage);
   }
 
   async listGitHubRepos(sortBy = 'stars') {
@@ -347,81 +294,56 @@ class OnyxMcpServer {
           break;
       }
 
-      return {
-        content: [{
-          type: 'text',
-          text: JSON.stringify({
-            totalRepos: repos.length,
-            sortedBy: sortBy,
-            repositories: repos.map(repo => ({
-              name: repo.fullName,
-              description: repo.description,
-              stars: repo.stars,
-              url: repo.url
-            }))
-          }, null, 2)
-        }]
-      };
+      const toolMessage = `Listing available GitHub repositories with Onyx code, sorted by ${sortBy}`;
+      return this.formatResponse(JSON.stringify({
+        totalRepos: repos.length,
+        sortedBy: sortBy,
+        repositories: repos.map(repo => ({
+          name: repo.fullName,
+          description: repo.description,
+          stars: repo.stars,
+          url: repo.url
+        }))
+      }, null, 2), toolMessage);
     } catch (error) {
-      return {
-        content: [{
-          type: 'text',
-          text: `Repository list not available. Run crawl_github_repos first. Error: ${error.message}`
-        }]
-      };
+      const toolMessage = 'Unable to list GitHub repositories - data may not be available yet';
+      return this.formatResponse(
+        `Repository list not available. Data may need to be populated first. Error: ${error.message}`,
+        toolMessage
+      );
     }
-  }
-
-  // URL crawling methods
-  async crawlUrl(url, extractCode = true) {
-    const { crawlUrl } = await import('./crawlers/urls.js');
-    const result = await crawlUrl(url, { extractCode });
-
-    return {
-      content: [{
-        type: 'text',
-        text: JSON.stringify(result, null, 2)
-      }]
-    };
   }
 
   // Unified search
   async searchAllSources(query, sources = ['docs', 'github'], limit = 10) {
     const results = await this.searchEngine.searchAll(query, sources, limit);
-    
-    return {
-      content: [{
-        type: 'text',
-        text: JSON.stringify(results, null, 2)
-      }]
-    };
+    const toolMessage = `Searching across multiple sources (${sources.join(', ')}) for: "${query}"`;
+    return this.formatResponse(JSON.stringify(results, null, 2), toolMessage);
   }
 
   // Legacy compatibility methods
   async getOnyxExamples(topic, limit = 3) {
     // Use GitHub examples as the primary source now
-    const results = await this.searchGitHubExamples(topic, limit);
-    return results;
+    const results = await this.searchEngine.searchGitHubExamples(topic, limit);
+    const toolMessage = `Finding Onyx code examples for: "${topic}" (legacy compatibility method)`;
+    return this.formatResponse(JSON.stringify(results, null, 2), toolMessage);
   }
 
   async getOnyxFunctionDocs(functionName) {
     // Search both docs and GitHub
-    const results = await this.searchAllSources(functionName, ['docs', 'github'], 5);
-    return {
-      content: [{
-        type: 'text',
-        text: JSON.stringify({
-          functionName,
-          searchResults: results
-        }, null, 2)
-      }]
-    };
+    const results = await this.searchEngine.searchAll(functionName, ['docs', 'github'], 5);
+    const toolMessage = `Looking up function documentation for: "${functionName}" (legacy compatibility method)`;
+    return this.formatResponse(JSON.stringify({
+      functionName,
+      searchResults: results
+    }, null, 2), toolMessage);
   }
 
   async browseOnyxSections(section) {
     // Use documentation search
-    const results = await this.searchOnyxDocs(section, 10);
-    return results;
+    const results = await this.searchEngine.searchDocs(section, 10);
+    const toolMessage = `Browsing Onyx documentation section: "${section}" (legacy compatibility method)`;
+    return this.formatResponse(JSON.stringify(results, null, 2), toolMessage);
   }
 
   async start() {
