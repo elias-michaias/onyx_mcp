@@ -64,8 +64,6 @@ program
   .description('Start the MCP-to-HTTP bridge (connects MCP to HTTP server)')
   .option('-u, --url <url>', 'HTTP server URL', 'http://localhost:3001')
   .action(async (options) => {
-    console.log('🌉 Starting MCP-to-HTTP Bridge...');
-    
     // Set environment variable for the bridge
     process.env.HTTP_SERVER_URL = options.url;
     
