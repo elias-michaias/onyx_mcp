@@ -1,22 +1,24 @@
 {
-  "name": "onyx-enhanced-mcp",
+  "name": "onyx_mcp",
   "version": "2.0.0",
-  "description": "Enhanced MCP server for Onyx programming language with documentation, GitHub examples, and URL crawling",
-  "main": "src/server.js",
+  "description": "MCP server for Onyx programming language with documentation, GitHub examples, and URL crawling",
+  "main": "src/index.js",
   "type": "module",
   "scripts": {
-    "test": "node test-setup.js",
-    "validate": "node validate.js",
-    "crawl:docs": "node src/docs-crawler.js",
-    "crawl:github": "node src/github-crawler-cli.js",
-    "crawl:all": "npm run crawl:docs && npm run crawl:github",
-    "start": "node src/server.js",
-    "dev": "node --watch src/server.js"
+    "start": "node src/index.js server",
+    "dev": "node src/index.js server --dev",
+    "test": "node src/index.js test",
+    "validate": "node src/index.js validate",
+    "crawl:docs": "node src/index.js crawl docs",
+    "crawl:github": "node src/index.js crawl github",
+    "crawl:all": "node src/index.js crawl all"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^0.5.0",
     "cheerio": "^1.0.0-rc.12",
-    "axios": "^1.6.0"
+    "axios": "^1.6.0",
+    "dotenv": "^16.0.0",
+    "commander": "^12.0.0"
   },
   "devDependencies": {
     "nodemon": "^3.0.0"

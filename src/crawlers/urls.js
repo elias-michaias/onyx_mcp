@@ -2,8 +2,23 @@ import axios from 'axios';
 import * as cheerio from 'cheerio';
 import fs from 'fs/promises';
 import path from 'path';
+import { fileURLToPath } from 'url';
 
-export class URLCrawler {
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+export async function crawlUrl(url, options = {}) {
+  const { extractCode = true } = options;
+  
+  const crawler = new UrlCrawler({
+    extractCode,
+    outputDir: path.join(__dirname, '../../data/urls'),
+    debug: true
+  });
+
+  return await crawler.crawlSingle(url);
+}
+
+export class UrlCrawler {
   constructor(options = {}) {
     this.extractCode = options.extractCode !== false;
     this.followLinks = options.followLinks || false;

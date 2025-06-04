@@ -3,37 +3,7 @@
     "onyx-enhanced": {
       "command": "node",
       "args": ["/path/to/onyx_mcp/src/server.js"],
-      "env": {
-        "GITHUB_TOKEN": "your_github_token_here_optional"
-      }
     }
   }
 }
 
-<!-- 
-SETUP INSTRUCTIONS:
-
-1. Replace "/path/to/onyx_mcp" with the actual path to your onyx_mcp directory
-   Example: "/Users/username/Projects/onyx_mcp/src/server.js"
-
-2. (Optional) Replace "your_github_token_here_optional" with your GitHub personal access token
-   - This increases API rate limits for GitHub crawling
-   - You can remove the entire "env" section if you don't want to use a token
-
-3. Add this configuration to your Claude Desktop config file:
-   - macOS: ~/Library/Application Support/Claude/claude_desktop_config.json
-   - Windows: %APPDATA%/Claude/claude_desktop_config.json
-
-4. Before first use, populate the data:
-   cd /path/to/onyx_mcp
-   npm run crawl:all
-
-5. Restart Claude Desktop
-
-EXAMPLE USAGE IN CLAUDE:
-- "Search for Onyx struct syntax"
-- "Show me networking examples from GitHub"
-- "Find HTTP client code in Onyx"
-- "Crawl this tutorial: https://example.com/onyx-guide"
-- "Search all sources for async examples"
--->

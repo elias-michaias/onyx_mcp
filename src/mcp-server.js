@@ -1,3 +1,7 @@
+// Load environment variables from .env file
+import dotenv from 'dotenv';
+dotenv.config();
+
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import {
@@ -7,14 +11,19 @@ import {
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import GitHubOnyxCrawler from './lib/github-crawler.js';
-import { SearchEngine } from './lib/search-engine.js';
-import { URLCrawler } from './lib/url-crawler.js';
-import OnyxDocsCrawler from './docs-crawler.js';
+import GitHubCrawler from './crawlers/github.js';
+import { SearchEngine } from './core/search-engine.js';
+import { UrlCrawler } from './crawlers/urls.js';
+import { DocumentationCrawler } from './crawlers/docs.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-class EnhancedOnyxMCP {
+export async function startMcpServer(devMode = false) {
+  const server = new OnyxMcpServer();
+  await server.start();
+}
+
+class OnyxMcpServer {
   constructor() {
     this.dataDir = path.join(__dirname, '../data');
     this.searchEngine = new SearchEngine(this.dataDir);
@@ -259,8 +268,8 @@ class EnhancedOnyxMCP {
   }
 
   async crawlOnyxDocs(force = false) {
-    const crawler = new OnyxDocsCrawler({ force });
-    await crawler.crawl();
+    const { crawlDocumentation } = await import('./crawlers/docs.js');
+    await crawlDocumentation({ force });
     
     return {
       content: [{
@@ -305,12 +314,15 @@ class EnhancedOnyxMCP {
   }
 
   async crawlGitHubRepos(repoLimit = 20, force = false) {
-    const crawler = new GitHubOnyxCrawler({
-      outputDir: path.join(this.dataDir, 'github'),
-      debug: true
-    });
+    const { crawlGitHub } = await import('./crawlers/github.js');
+    
+    const defaultRepos = [
+      'onyx-lang/onyx',
+      'onyx-lang/pkg', 
+      'onyx-lang/examples'
+    ];
 
-    await crawler.crawlAllRepositories(repoLimit);
+    await crawlGitHub(defaultRepos, { limit: repoLimit });
 
     return {
       content: [{
@@ -362,13 +374,8 @@ class EnhancedOnyxMCP {
 
   // URL crawling methods
   async crawlUrl(url, extractCode = true) {
-    const crawler = new URLCrawler({
-      extractCode,
-      outputDir: path.join(this.dataDir, 'urls'),
-      debug: true
-    });
-
-    const result = await crawler.crawlSingle(url);
+    const { crawlUrl } = await import('./crawlers/urls.js');
+    const result = await crawlUrl(url, { extractCode });
 
     return {
       content: [{
@@ -420,11 +427,5 @@ class EnhancedOnyxMCP {
   async start() {
     const transport = new StdioServerTransport();
     await this.server.connect(transport);
-    
-    console.error('Enhanced Onyx MCP Server running with GitHub and URL crawling capabilities...');
   }
 }
-
-// Start the server
-const server = new EnhancedOnyxMCP();
-server.start().catch(console.error);

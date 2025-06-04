@@ -247,19 +247,32 @@ export class SearchEngine {
       let score = 0;
       const pathMatch = file.path.toLowerCase().includes(queryLower);
       const repoMatch = file.repository.toLowerCase().includes(queryLower);
-      const codeMatch = file.code.toLowerCase().includes(queryLower);
+      const codeMatch = file.code && file.code.toLowerCase().includes(queryLower);
+      const contentMatch = file.content && file.content.toLowerCase().includes(queryLower);
       
+      // Higher scores for different types of matches
       if (pathMatch) score += 5;
       if (repoMatch) score += 3;
-      if (codeMatch) score += 1;
+      if (codeMatch || contentMatch) score += 1;
+      
+      // Boost score for important file types
+      if (file.fileType === 'readme') score += 10;
+      if (file.fileType === 'package-config') score += 8;
+      if (file.fileType === 'project-config') score += 6;
+      if (file.fileType === 'documentation') score += 7;
+      if (file.fileType === 'web-content') score += 5;
+      if (file.fileType === 'web-index') score += 6;
+      if (file.fileType === 'example' && file.path.toLowerCase().endsWith('.html')) score += 4;
       
       if (score > 0) {
+        const content = file.content || file.code || '';
         results.push({
           file: file.path,
           repository: file.repository,
           url: file.url,
           score: score,
-          codeSnippet: this.getSnippet(file.code, queryLower, 200)
+          fileType: file.fileType || 'unknown',
+          codeSnippet: this.getSnippet(content, queryLower, 300)
         });
       }
     }

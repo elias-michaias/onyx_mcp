@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-
 import { spawn } from 'child_process';
 import fs from 'fs/promises';
 import path from 'path';
@@ -7,11 +5,18 @@ import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+export async function runTests() {
+  console.log('🚀 Starting Onyx MCP Test Suite\n');
+  
+  const runner = new TestRunner();
+  await runner.runAllTests();
+}
+
 class TestRunner {
   constructor() {
     this.passed = 0;
     this.failed = 0;
-    this.dataDir = path.join(__dirname, 'data');
+    this.dataDir = path.join(__dirname, '../data');
   }
 
   async test(name, testFn) {
@@ -49,7 +54,7 @@ class TestRunner {
     return new Promise((resolve, reject) => {
       const child = spawn('npm', ['run', scriptName], {
         stdio: 'inherit',
-        cwd: __dirname
+        cwd: path.dirname(__dirname)
       });
 
       child.on('close', (code) => {
@@ -65,23 +70,22 @@ class TestRunner {
   }
 
   async runAllTests() {
-    console.log('🚀 Starting Enhanced Onyx MCP Test Suite\n');
+    console.log('🚀 Starting Onyx MCP Test Suite\n');
 
     // Test 1: Check file structure
     await this.test('File structure exists', async () => {
       const requiredFiles = [
-        'src/server.js',
-        'src/docs-crawler.js',
-        'src/github-crawler-cli.js',
-        'src/lib/github-crawler.js',  
-        'src/lib/search-engine.js',
-        'src/lib/url-crawler.js',
+        'src/mcp-server.js',
+        'src/crawlers/docs.js',
+        'src/crawlers/github.js',
+        'src/core/search-engine.js',
+        'src/crawlers/urls.js',
         'package.json',
         'README.md'
       ];
 
       for (const file of requiredFiles) {
-        const filePath = path.join(__dirname, file);
+        const filePath = path.join(__dirname, '..', file);
         if (!(await this.fileExists(filePath))) {
           throw new Error(`Required file missing: ${file}`);
         }
@@ -90,15 +94,15 @@ class TestRunner {
 
     // Test 2: Package.json validation
     await this.test('Package.json is valid', async () => {
-      const pkgPath = path.join(__dirname, 'package.json');
+      const pkgPath = path.join(__dirname, '..', 'package.json');
       if (!(await this.isValidJson(pkgPath))) {
         throw new Error('package.json is not valid JSON');
       }
 
       const pkg = JSON.parse(await fs.readFile(pkgPath, 'utf8'));
       
-      if (pkg.name !== 'onyx-enhanced-mcp') {
-        throw new Error(`Expected package name 'onyx-enhanced-mcp', got '${pkg.name}'`);
+      if (pkg.name !== 'onyx_mcp') {
+        throw new Error(`Expected package name 'onyx_mcp', got '${pkg.name}'`);
       }
 
       if (pkg.version !== '2.0.0') {
@@ -116,14 +120,14 @@ class TestRunner {
     // Test 3: Module imports work
     await this.test('Module imports work', async () => {
       try {
-        const { SearchEngine } = await import('./src/lib/search-engine.js');
-        const GitHubOnyxCrawler = (await import('./src/lib/github-crawler.js')).default;
-        const { URLCrawler } = await import('./src/lib/url-crawler.js');
+        const { SearchEngine } = await import('./core/search-engine.js');
+        const GitHubCrawler = (await import('./crawlers/github.js')).default;
+        const { UrlCrawler } = await import('./crawlers/urls.js');
         
         // Test that classes can be instantiated
         new SearchEngine('/tmp');
-        new GitHubOnyxCrawler();
-        new URLCrawler();
+        new GitHubCrawler();
+        new UrlCrawler();
       } catch (error) {
         throw new Error(`Module import failed: ${error.message}`);
       }
@@ -138,28 +142,37 @@ class TestRunner {
 
     // Test 5: SearchEngine functionality
     await this.test('SearchEngine handles missing data gracefully', async () => {
-      const { SearchEngine } = await import('./src/lib/search-engine.js');
+      const { SearchEngine } = await import('./core/search-engine.js');
       
       // Use a temporary directory that definitely doesn't have data files
       const tempDir = path.join(this.dataDir, 'temp-test-' + Date.now());
       const searchEngine = new SearchEngine(tempDir);
       
-      // These should return error messages, not throw exceptions
-      const docsResult = await searchEngine.searchDocs('test');
-      if (!docsResult.error) {
-        throw new Error('Expected error for missing docs data, but got: ' + JSON.stringify(docsResult));
-      }
+      // Suppress console.error during test
+      const originalConsoleError = console.error;
+      console.error = () => {}; // Silent
+      
+      try {
+        // These should return error messages, not throw exceptions
+        const docsResult = await searchEngine.searchDocs('test');
+        if (!docsResult.error) {
+          throw new Error('Expected error for missing docs data, but got: ' + JSON.stringify(docsResult));
+        }
 
-      const githubResult = await searchEngine.searchGitHubExamples('test');
-      if (!githubResult.error) {
-        throw new Error('Expected error for missing GitHub data, but got: ' + JSON.stringify(githubResult));
+        const githubResult = await searchEngine.searchGitHubExamples('test');
+        if (!githubResult.error) {
+          throw new Error('Expected error for missing GitHub data, but got: ' + JSON.stringify(githubResult));
+        }
+      } finally {
+        // Restore console.error
+        console.error = originalConsoleError;
       }
     });
 
     // Test 6: URLCrawler basic functionality
     await this.test('URLCrawler can be configured', async () => {
-      const { URLCrawler } = await import('./src/lib/url-crawler.js');
-      const crawler = new URLCrawler({
+      const { UrlCrawler } = await import('./crawlers/urls.js');
+      const crawler = new UrlCrawler({
         extractCode: true,
         followLinks: false,
         maxDepth: 1,
@@ -174,8 +187,8 @@ class TestRunner {
 
     // Test 7: GitHub crawler configuration
     await this.test('GitHub crawler initializes correctly', async () => {
-      const GitHubOnyxCrawler = (await import('./src/lib/github-crawler.js')).default;
-      const crawler = new GitHubOnyxCrawler({
+      const GitHubCrawler = (await import('./crawlers/github.js')).default;
+      const crawler = new GitHubCrawler({
         debug: false,
         maxFilesPerRepo: 10,
         maxFileSize: 1000
@@ -193,7 +206,7 @@ class TestRunner {
     console.log(`📈 Success Rate: ${Math.round((this.passed / (this.passed + this.failed)) * 100)}%`);
 
     if (this.failed === 0) {
-      console.log('\n🎉 All tests passed! Your Enhanced Onyx MCP is ready to use.');
+      console.log('\n🎉 All tests passed! Your Onyx MCP is ready to use.');
       console.log('\n📝 Next steps:');
       console.log('1. Run "npm run crawl:all" to populate data');
       console.log('2. Run "npm start" to start the MCP server');
@@ -204,7 +217,3 @@ class TestRunner {
     }
   }
 }
-
-// Run tests
-const runner = new TestRunner();
-runner.runAllTests().catch(console.error);

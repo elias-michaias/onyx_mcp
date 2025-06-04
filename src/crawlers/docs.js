@@ -6,18 +6,25 @@ import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+export async function crawlDocumentation(options = {}) {
+  const { force = false } = options;
+  
+  const crawler = new DocumentationCrawler({ force });
+  return await crawler.crawl();
+}
+
 // Configuration
 const BASE_URLS = [
   'https://docs.onyxlang.io/book/Overview.html',  // Book documentation
   'https://docs.onyxlang.io/packages/core.html',  // Package documentation
 ]; 
 
-const OUTPUT_DIR = path.join(__dirname, '../data');
+const OUTPUT_DIR = path.join(__dirname, '../../data');
 const CRAWL_DELAY = 2000; // Increased to 2 seconds to avoid rate limiting
 const MAX_PAGES = 500;
 const RECRAWL_THRESHOLD_DAYS = 7;
 
-class OnyxDocsCrawler {
+export class DocumentationCrawler {
   constructor(options = {}) {
     this.visited = new Set();
     this.docs = [];
@@ -466,70 +473,4 @@ class OnyxDocsCrawler {
   }
 }
 
-// Run crawler if called directly
-if (import.meta.url === `file://${process.argv[1]}`) {
-  // Parse command line arguments
-  const args = process.argv.slice(2);
-  let startUrls = null;
-  let forceRecrawl = false;
-  
-  // Parse flags and URLs
-  const filteredArgs = [];
-  for (const arg of args) {
-    if (arg === '--force' || arg === '-f') {
-      forceRecrawl = true;
-      console.log('🔄 Force recrawl enabled');
-    } else if (arg === '--help' || arg === '-h') {
-      console.log(`
-🕷️  Onyx Documentation Crawler
-
-Usage: node crawler.js [options] [urls...]
-
-Options:
-  --force, -f     Force recrawl even if site was crawled within the last week
-  --help, -h      Show this help message
-
-Examples:
-  node crawler.js                                    # Crawl default URLs
-  node crawler.js --force                           # Force crawl default URLs
-  node crawler.js https://docs.onyxlang.io/book/Overview.html # Crawl specific URL
-  node crawler.js --force https://docs.example.com/ # Force crawl specific URL
-
-The crawler will automatically skip sites that were crawled within the last ${RECRAWL_THRESHOLD_DAYS} days
-unless the --force flag is used.
-      `);
-      process.exit(0);
-    } else if (arg.startsWith('http')) {
-      filteredArgs.push(arg);
-    } else {
-      console.warn(`⚠️  Unknown argument: ${arg}`);
-    }
-  }
-  
-  if (filteredArgs.length > 0) {
-    startUrls = filteredArgs;
-    console.log('🎯 Using provided URLs:', startUrls);
-  } else {
-    console.log('📚 Using default URLs from BASE_URLS configuration');
-  }
-  
-  const crawler = new OnyxDocsCrawler({ force: forceRecrawl });
-  
-  // Add process monitoring
-  console.log('🚀 Starting Onyx documentation crawler...');
-  const startTime = Date.now();
-  
-  crawler.crawl(startUrls)
-    .then(() => {
-      const duration = ((Date.now() - startTime) / 1000).toFixed(2);
-      console.log(`🏁 Crawl completed successfully in ${duration} seconds`);
-      process.exit(0);
-    })
-    .catch(error => {
-      console.error('💥 Crawl failed:', error);
-      console.error(error.stack);
-      process.exit(1);
-    });
-}
-
-export default OnyxDocsCrawler;
+export default DocumentationCrawler;
