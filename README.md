@@ -334,7 +334,7 @@ User: "Write a function to calculate fibonacci numbers"
 
 ### Requirements:
 - **Onyx compiler** must be installed and available in PATH
-- Install from: https://onyxlang.io/install
+- Install from: https://onyxlang.io/
 - The tool executes code in a sandboxed temporary directory
 - Default timeout of 10 seconds (configurable) prevents infinite loops
 
