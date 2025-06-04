@@ -126,67 +126,43 @@ MAX_CRAWL_LIMIT=50
 You can connect to the Onyx MCP in two ways:
 
 ### Option 1: Local MCP Server (Recommended for Development)
-
-1. **Start the local MCP server:**
-   ```bash
-   npm start
-   ```
-
-2. **Configure Claude Desktop** (`claude_desktop_config.json`):
-   ```json
-   {
-     "mcpServers": {
-       "onyx_mcp": {
-         "command": "node",
-         "args": ["/path/to/onyx_mcp/src/index.js", "server"]
-       }
-     }
+```json
+{
+ "mcpServers": {
+   "onyx_mcp": {
+     "command": "node",
+     "args": ["/path/to/onyx_mcp/src/index.js", "server"]
    }
-   ```
+ }
+}
+```
 
 ### Option 2: Connect to Hosted Server via Bridge
+```json
+{
+ "mcpServers": {
+   "onyx_mcp": {
+     "command": "node",
+     "args": ["/path/to/onyx_mcp/src/bridge.js", "--url", "https://mcp.onyxlang.io"],
+   }
+ }
+}
+```
 
-1. **Start the bridge** (connects to `mcp.onyxlang.io`):
+### Option 3: Local HTTP Server + Bridge
+For testing the bridge locally:
+
+1. **Start the HTTP server:**
    ```bash
-   npm run bridge -- --url https://mcp.onyxlang.io
+   npm run http --port 3002
    ```
-
 2. **Configure Claude Desktop** to use the bridge:
    ```json
    {
      "mcpServers": {
        "onyx_mcp": {
          "command": "node",
-         "args": ["/path/to/onyx_mcp/src/bridge.js"],
-         "env": {
-           "HTTP_SERVER_URL": "https://mcp.onyxlang.io"
-         }
-       }
-     }
-   }
-   ```
-
-### Option 3: Local HTTP Server + Bridge
-
-For testing the bridge locally:
-
-1. **Start the HTTP server:**
-   ```bash
-   npm run http
-   ```
-
-2. **Start the bridge** (in another terminal):
-   ```bash
-   npm run bridge
-   ```
-
-3. **Configure Claude Desktop** to use the bridge:
-   ```json
-   {
-     "mcpServers": {
-       "onyx_mcp": {
-         "command": "node",
-         "args": ["/path/to/onyx_mcp/src/bridge.js"]
+         "args": ["/path/to/onyx_mcp/src/bridge.js", "--url", "http://localhost:3002"]
        }
      }
    }
