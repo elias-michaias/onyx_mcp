@@ -4,18 +4,70 @@ A Model Context Protocol (MCP) server providing search and query access to Onyx 
 
 ## 🚀 Quick Start
 
-### Installation & Setup
+### ⚡ Instant Access with NPX (No Installation Required!)
 
+**Configure Claude Desktop (or other MCP-compatible LLM):**
+```json
+{
+  "mcpServers": {
+    "onyx": {
+      "command": "npx",
+      "args": ["@onyxlang/mcp-server", "bridge", "--url", "https://mcp.onyxlang.io"]
+    }
+  }
+}
+```
+
+🎆 **That's it!** No installation, no setup, no data crawling needed. You get instant access to the latest Onyx documentation and examples.
+
+### Installation
+
+#### Option 1: Install from npm (Recommended)
 ```bash
-# Install dependencies  
-npm install
+# Install globally
+npm install -g @onyxlang/mcp-server
 
-# Create environment configuration
+# Or install locally in your project
+npm install @onyxlang/mcp-server
+```
+
+#### Option 2: Install from source
+```bash
+git clone https://github.com/onyx-lang/onyx-mcp-server.git
+cd onyx-mcp-server
+npm install
 cp .env.example .env
 # Edit .env and add your GitHub token (optional but recommended)
+```
 
-# Validate installation
-npm run validate
+### Usage
+
+#### If installed globally:
+```bash
+# Start MCP server
+onyx-mcp server
+
+# Start HTTP server
+onyx-mcp http
+
+# Start bridge to hosted server
+onyx-mcp bridge --url https://mcp.onyxlang.io
+
+# Crawl data (if running locally)
+onyx-mcp crawl all
+```
+
+#### If installed locally or from source:
+```bash
+# Use npm scripts
+npm start              # MCP server
+npm run http           # HTTP server  
+npm run bridge         # Bridge to localhost:3001
+npm run crawl:all      # Crawl all data
+
+# Or run directly
+node src/index.js server
+node src/index.js bridge --url https://mcp.onyxlang.io
 ```
 
 ### Basic Usage
@@ -124,13 +176,27 @@ MAX_CRAWL_LIMIT=50
 
 ## 🌐 Claude Desktop Integration
 
-You can connect to the Onyx MCP in two ways:
+You can connect to the Onyx MCP in multiple ways:
 
-### Option 1: Local MCP Server (Recommended for Development)
+### ⚡ Option 1: NPX Bridge (Zero Installation)
+
+**For hosted server (always up-to-date):**
+```json
+{
+  "mcpServers": {
+    "onyx": {
+      "command": "npx",
+      "args": ["@onyxlang/mcp-server", "bridge", "--url", "https://mcp.onyxlang.io"]
+    }
+  }
+}
+```
+
+### Option 2: Local MCP Server (For Development)
 ```json
 {
  "mcpServers": {
-   "onyx_mcp": {
+   "onyx": {
      "command": "node",
      "args": ["/path/to/onyx_mcp/src/index.js", "server"]
    }
@@ -138,11 +204,11 @@ You can connect to the Onyx MCP in two ways:
 }
 ```
 
-### Option 2: Connect to Hosted Server via Bridge
+### Option 3: Connect to Custom Hosted Server via Bridge
 ```json
 {
  "mcpServers": {
-   "onyx_mcp": {
+   "onyx": {
      "command": "node",
      "args": ["/path/to/onyx_mcp/src/index.js", "bridge", "--url", "https://mcp.onyxlang.io"],
    }
@@ -150,7 +216,7 @@ You can connect to the Onyx MCP in two ways:
 }
 ```
 
-### Option 3: Local HTTP Server + Bridge
+### Option 4: Local HTTP Server + Bridge
 For testing the bridge locally:
 
 1. **Start the HTTP server:**
@@ -161,15 +227,13 @@ For testing the bridge locally:
    ```json
    {
      "mcpServers": {
-       "onyx_mcp": {
+       "onyx": {
          "command": "node",
          "args": ["/path/to/onyx_mcp/src/index.js", "bridge", "--url", "http://localhost:3002"]
        }
      }
    }
    ```
-
-## 🚀 Quick Start Guide
 
 ### For Development (Local Setup)
 1. **Clone and setup:**
@@ -200,9 +264,9 @@ For testing the bridge locally:
    npm install
    ```
 
-2. **Start bridge to hosted server:**
+2. **Start HTTP server:**
    ```bash
-   npm run bridge -- --url https://mcp.onyxlang.io
+   npm run http 
    ```
 
 3. **Configure Claude Desktop** with bridge (see integration section above)

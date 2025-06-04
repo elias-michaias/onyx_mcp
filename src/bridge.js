@@ -171,7 +171,6 @@ class McpHttpBridge {
     try {
       // Test connection to HTTP server
       await this.fetchJson(`${this.httpServerUrl}/health`);
-      console.log(`✅ Connected to HTTP server at ${this.httpServerUrl}`);
     } catch (error) {
       console.error('❌ Failed to connect to HTTP server at', this.httpServerUrl);
       console.error('💡 Make sure to start the HTTP server first: npm run http');
@@ -180,7 +179,6 @@ class McpHttpBridge {
 
     const transport = new StdioServerTransport();
     await this.server.connect(transport);
-    console.log('🌉 MCP-to-HTTP Bridge is running and ready for Claude Desktop!');
   }
 }
 
@@ -194,7 +192,32 @@ export default async function startBridge() {
 
 // Start the bridge if run directly
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const httpServerUrl = process.env.HTTP_SERVER_URL || 'http://localhost:3001';
+  // Parse command line arguments for npx usage
+  const args = process.argv.slice(2);
+  let httpServerUrl = 'https://mcp.onyxlang.io'; // Default to hosted server for npx
+  
+  // Look for --url argument
+  const urlIndex = args.indexOf('--url');
+  if (urlIndex !== -1 && args[urlIndex + 1]) {
+    httpServerUrl = args[urlIndex + 1];
+  }
+  
+  // Look for -u argument
+  const uIndex = args.indexOf('-u');
+  if (uIndex !== -1 && args[uIndex + 1]) {
+    httpServerUrl = args[uIndex + 1];
+  }
+  
+  // Use environment variable if set
+  if (process.env.HTTP_SERVER_URL) {
+    httpServerUrl = process.env.HTTP_SERVER_URL;
+  }
+  
+  console.log(`🌉 Starting Onyx MCP Bridge...`);
+  console.log(`🔗 Connecting to: ${httpServerUrl}`);
+  console.log(`💡 Usage: Configure Claude Desktop to use this bridge process`);
+  console.log(``);
+  
   const bridge = new McpHttpBridge(httpServerUrl);
 
   bridge.start().catch((error) => {
