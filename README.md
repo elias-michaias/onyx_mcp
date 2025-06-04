@@ -70,6 +70,7 @@ node src/index.js validate  # Validate setup
 ```
 onyx_mcp/
 ├── src/
+│   ├── bridge.js          # 🌉 MCP-to-HTTP bridge for remote access
 │   ├── index.js           # 🎯 Unified entry point
 │   ├── mcp-server.js      # 🌐 MCP server implementation
 │   ├── mcp-http.js        # 🌐 MCP over HTTP server implementation 
