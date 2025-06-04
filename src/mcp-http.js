@@ -11,6 +11,7 @@ dotenv.config();
 
 // Import MCP server functionality
 import { SearchEngine } from './core/search-engine.js';
+import { spawn } from 'child_process';
 import { crawlDocumentation } from './crawlers/docs.js';
 import { crawlGitHub } from './crawlers/github.js';
 import { crawlUrl } from './crawlers/urls.js';
@@ -26,6 +27,122 @@ class OnyxMcpHttpServer {
     
     this.setupMiddleware();
     this.setupRoutes();
+  }
+
+  // Code execution method
+  async runOnyxCode(code, filename = 'temp.onyx', timeout = 10) {
+    try {
+      // Create a temporary directory for code execution
+      const fs = await import('fs/promises');
+      const tempDir = path.join(this.dataDir, 'temp');
+      await fs.mkdir(tempDir, { recursive: true });
+      
+      // Write the code to a temporary file
+      const filePath = path.join(tempDir, filename);
+      await fs.writeFile(filePath, code, 'utf8');
+      
+      // Execute the Onyx code
+      const result = await this.executeOnyxFile(filePath, timeout);
+      
+      // Clean up the temporary file
+      try {
+        await fs.unlink(filePath);
+      } catch (cleanupError) {
+        // Ignore cleanup errors
+      }
+      
+      // Format the response with execution results
+      return {
+        success: result.success,
+        exitCode: result.exitCode,
+        stdout: result.stdout,
+        stderr: result.stderr,
+        executionTime: result.executionTime,
+        filename: filename,
+        codeLength: code.length
+      };
+      
+    } catch (error) {
+      return {
+        success: false,
+        error: error.message,
+        filename: filename,
+        codeLength: code.length
+      };
+    }
+  }
+  
+  // Helper method to execute Onyx files
+  async executeOnyxFile(filePath, timeoutSeconds = 10) {
+    return new Promise((resolve) => {
+      const startTime = Date.now();
+      let stdout = '';
+      let stderr = '';
+      let finished = false;
+      
+      // Try to run with 'onyx run' first
+      const child = spawn('onyx', ['run', filePath], {
+        stdio: ['pipe', 'pipe', 'pipe'],
+        cwd: path.dirname(filePath)
+      });
+      
+      // Set up timeout
+      const timer = setTimeout(() => {
+        if (!finished) {
+          finished = true;
+          child.kill('SIGTERM');
+          resolve({
+            success: false,
+            exitCode: -1,
+            stdout: stdout,
+            stderr: stderr + '\n[TIMEOUT] Execution exceeded ' + timeoutSeconds + ' seconds',
+            executionTime: Date.now() - startTime
+          });
+        }
+      }, timeoutSeconds * 1000);
+      
+      // Collect stdout
+      child.stdout.on('data', (data) => {
+        stdout += data.toString();
+      });
+      
+      // Collect stderr
+      child.stderr.on('data', (data) => {
+        stderr += data.toString();
+      });
+      
+      // Handle process completion
+      child.on('close', (code) => {
+        if (!finished) {
+          finished = true;
+          clearTimeout(timer);
+          
+          resolve({
+            success: code === 0,
+            exitCode: code,
+            stdout: stdout,
+            stderr: stderr,
+            executionTime: Date.now() - startTime
+          });
+        }
+      });
+      
+      // Handle process errors (e.g., 'onyx' command not found)
+      child.on('error', (error) => {
+        if (!finished) {
+          finished = true;
+          clearTimeout(timer);
+          
+          resolve({
+            success: false,
+            exitCode: -1,
+            stdout: stdout,
+            stderr: `Error executing Onyx: ${error.message}\n\nNote: Make sure 'onyx' is installed and available in PATH.\nInstall from: https://onyxlang.io/install`,
+            executionTime: Date.now() - startTime
+          });
+        }
+      });
+    });
   }
 
   setupMiddleware() {
@@ -127,6 +244,19 @@ class OnyxMcpHttpServer {
               query: { type: 'string', required: true, description: 'Search query' },
               sources: { type: 'array', default: ['docs', 'github'], description: 'Sources to search in' },
               limit: { type: 'number', default: 10, description: 'Maximum number of results' }
+            }
+          },
+
+          // Code execution tools
+          {
+            name: 'run_onyx_code',
+            description: 'Execute Onyx code and return output/errors for testing and debugging',
+            method: 'POST',
+            endpoint: '/tools/run_onyx_code',
+            parameters: {
+              code: { type: 'string', required: true, description: 'Onyx code to execute' },
+              filename: { type: 'string', default: 'temp.onyx', description: 'Optional filename' },
+              timeout: { type: 'number', default: 10, description: 'Execution timeout in seconds' }
             }
           }
         ]
@@ -244,6 +374,21 @@ class OnyxMcpHttpServer {
       }
     });
 
+    // Code execution endpoints
+    this.app.post('/tools/run_onyx_code', async (req, res) => {
+      try {
+        const { code, filename = 'temp.onyx', timeout = 10 } = req.body;
+        if (!code) {
+          return res.status(400).json({ error: 'code parameter is required' });
+        }
+        
+        const result = await this.runOnyxCode(code, filename, timeout);
+        res.json(result);
+      } catch (error) {
+        res.status(500).json({ error: error.message });
+      }
+    });
+
     // Legacy compatibility endpoints
     this.app.post('/tools/get_onyx_examples', async (req, res) => {
       try {
@@ -314,7 +459,8 @@ class OnyxMcpHttpServer {
 
           'GET /tools/list_github_repos',
 
-          'POST /tools/search_all_sources'
+          'POST /tools/search_all_sources',
+          'POST /tools/run_onyx_code'
         ]
       });
     });

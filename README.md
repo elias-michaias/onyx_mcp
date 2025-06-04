@@ -59,14 +59,17 @@ onyx-mcp crawl all
 
 #### If installed locally or from source:
 ```bash
-# Use npm scripts
+# Use npm scripts with arguments
 npm start              # MCP server
-npm run http           # HTTP server  
-npm run bridge         # Bridge to localhost:3001
+npm run http           # HTTP server on default port (3001)
+npm run http -- --port 3002  # HTTP server on custom port
+npm run bridge         # Bridge to default (localhost:3001)
+npm run bridge -- --url https://mcp.onyxlang.io  # Bridge to hosted server
 npm run crawl:all      # Crawl all data
 
 # Or run directly
 node src/index.js server
+node src/index.js http --port 3002
 node src/index.js bridge --url https://mcp.onyxlang.io
 ```
 
@@ -78,9 +81,11 @@ npm start
 
 # Start the HTTP server for REST API access
 npm run http
+npm run http -- --port 3002  # Custom port
 
 # Start the MCP-to-HTTP bridge (connects to local or remote HTTP server)
 npm run bridge
+npm run bridge -- --url https://mcp.onyxlang.io  # Connect to hosted server
 
 # Run with development mode
 npm run dev        # MCP server
@@ -105,6 +110,13 @@ node src/index.js http            # Start HTTP server
 node src/index.js http --port 3002 # HTTP server on custom port
 node src/index.js bridge          # Start MCP-to-HTTP bridge
 node src/index.js bridge --url https://mcp.onyxlang.io # Connect to hosted server
+
+# Using npm scripts (with argument passing)
+npm start                         # MCP server
+npm run http                      # HTTP server (port 3001)
+npm run http -- --port 3002       # HTTP server on custom port
+npm run bridge                    # Bridge to localhost:3001
+npm run bridge -- --url https://mcp.onyxlang.io  # Bridge to hosted server
 
 # Data crawling (CLI only - NOT accessible through MCP)
 node src/index.js crawl docs                    # Documentation only
@@ -157,6 +169,9 @@ The server provides these **read-only** search and query tools to Claude:
 ### 🔍 Unified Search
 - `search_all_sources` - Search across all data sources
 - `get_onyx_examples` - Legacy compatibility for examples
+
+### 🚀 Code Execution
+- `run_onyx_code` - Execute Onyx code and return output/errors for testing and debugging
 
 ### ⚠️ Important Note
 Crawling tools are available through the CLI but **intentionally NOT accessible** through the MCP interface. This ensures clean separation between data collection and query functionality.
@@ -285,6 +300,43 @@ Benefits:
 - ✅ Always up-to-date with latest Onyx information
 - ✅ Same MCP interface, different backend
 - ✅ Easy switching between local and remote servers
+
+## 🔄 Code Testing & Feedback Loop
+
+The `run_onyx_code` tool enables Claude to test and refine Onyx code through an iterative feedback loop:
+
+### How it Works:
+1. **Claude writes Onyx code** based on your requirements
+2. **Executes the code** using `run_onyx_code` tool
+3. **Reads compilation/runtime errors** from the output
+4. **Analyzes the errors** and adjusts the code
+5. **Repeats the process** until the code works correctly
+
+### Example Workflow:
+```
+User: "Write a function to calculate fibonacci numbers"
+
+1. Claude writes initial code
+2. Tests with run_onyx_code
+3. Sees compilation error about syntax
+4. Fixes syntax and tests again
+5. Sees runtime error about logic
+6. Fixes logic and tests again
+7. Code now runs successfully!
+```
+
+### Benefits:
+- ✅ **Self-correcting code** - Claude can fix its own mistakes
+- ✅ **Real validation** - Actually runs the code, not just syntax checking
+- ✅ **Learning from errors** - Improves suggestions based on Onyx compiler feedback
+- ✅ **Iterative refinement** - Keeps improving until code works perfectly
+- ✅ **Confidence in results** - You know the code actually compiles and runs
+
+### Requirements:
+- **Onyx compiler** must be installed and available in PATH
+- Install from: https://onyxlang.io/install
+- The tool executes code in a sandboxed temporary directory
+- Default timeout of 10 seconds (configurable) prevents infinite loops
 
 ## 📊 Data Sources & Crawling
 

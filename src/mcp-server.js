@@ -11,6 +11,7 @@ import {
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { spawn } from 'child_process';
 import { SearchEngine } from './core/search-engine.js';
 import GitHubCrawler from './crawlers/github.js';
 import { UrlCrawler } from './crawlers/urls.js';
@@ -146,6 +147,21 @@ class OnyxMcpServer {
             }
           },
 
+          // Code execution tools
+          {
+            name: 'run_onyx_code',
+            description: 'Execute Onyx code and return the output/errors for testing and debugging',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                code: { type: 'string', description: 'Onyx code to execute' },
+                filename: { type: 'string', description: 'Optional filename (defaults to temp.onyx)', default: 'temp.onyx' },
+                timeout: { type: 'number', description: 'Execution timeout in seconds', default: 10 }
+              },
+              required: ['code']
+            }
+          },
+
           // Legacy tools for compatibility
           {
             name: 'get_onyx_examples',
@@ -211,6 +227,10 @@ class OnyxMcpServer {
           // Unified search
           case 'search_all_sources':
             return await this.searchAllSources(args.query, args.sources, args.limit);
+
+          // Code execution
+          case 'run_onyx_code':
+            return await this.runOnyxCode(args.code, args.filename, args.timeout);
 
           // Legacy compatibility tools
           case 'get_onyx_examples':
@@ -318,6 +338,127 @@ class OnyxMcpServer {
     const results = await this.searchEngine.searchAll(query, sources, limit);
     const toolMessage = `Searching across multiple sources (${sources.join(', ')}) for: "${query}"`;
     return this.formatResponse(JSON.stringify(results, null, 2), toolMessage);
+  }
+
+  // Code execution
+  async runOnyxCode(code, filename = 'temp.onyx', timeout = 10) {
+    const toolMessage = `Executing Onyx code to test and validate functionality`;
+    
+    try {
+      // Create a temporary directory for code execution
+      const tempDir = path.join(this.dataDir, 'temp');
+      await fs.mkdir(tempDir, { recursive: true });
+      
+      // Write the code to a temporary file
+      const filePath = path.join(tempDir, filename);
+      await fs.writeFile(filePath, code, 'utf8');
+      
+      // Execute the Onyx code
+      const result = await this.executeOnyxFile(filePath, timeout);
+      
+      // Clean up the temporary file
+      try {
+        await fs.unlink(filePath);
+      } catch (cleanupError) {
+        // Ignore cleanup errors
+      }
+      
+      // Format the response with execution results
+      const response = {
+        success: result.success,
+        exitCode: result.exitCode,
+        stdout: result.stdout,
+        stderr: result.stderr,
+        executionTime: result.executionTime,
+        filename: filename,
+        codeLength: code.length
+      };
+      
+      return this.formatResponse(JSON.stringify(response, null, 2), toolMessage);
+      
+    } catch (error) {
+      const errorResponse = {
+        success: false,
+        error: error.message,
+        filename: filename,
+        codeLength: code.length
+      };
+      
+      return this.formatResponse(JSON.stringify(errorResponse, null, 2), toolMessage);
+    }
+  }
+  
+  // Helper method to execute Onyx files
+  async executeOnyxFile(filePath, timeoutSeconds = 10) {
+    return new Promise((resolve) => {
+      const startTime = Date.now();
+      let stdout = '';
+      let stderr = '';
+      let finished = false;
+      
+      // Try to run with 'onyx run' first, fall back to 'onyx' if that fails
+      const child = spawn('onyx', ['run', filePath], {
+        stdio: ['pipe', 'pipe', 'pipe'],
+        cwd: path.dirname(filePath)
+      });
+      
+      // Set up timeout
+      const timer = setTimeout(() => {
+        if (!finished) {
+          finished = true;
+          child.kill('SIGTERM');
+          resolve({
+            success: false,
+            exitCode: -1,
+            stdout: stdout,
+            stderr: stderr + '\n[TIMEOUT] Execution exceeded ' + timeoutSeconds + ' seconds',
+            executionTime: Date.now() - startTime
+          });
+        }
+      }, timeoutSeconds * 1000);
+      
+      // Collect stdout
+      child.stdout.on('data', (data) => {
+        stdout += data.toString();
+      });
+      
+      // Collect stderr
+      child.stderr.on('data', (data) => {
+        stderr += data.toString();
+      });
+      
+      // Handle process completion
+      child.on('close', (code) => {
+        if (!finished) {
+          finished = true;
+          clearTimeout(timer);
+          
+          resolve({
+            success: code === 0,
+            exitCode: code,
+            stdout: stdout,
+            stderr: stderr,
+            executionTime: Date.now() - startTime
+          });
+        }
+      });
+      
+      // Handle process errors (e.g., 'onyx' command not found)
+      child.on('error', (error) => {
+        if (!finished) {
+          finished = true;
+          clearTimeout(timer);
+          
+          resolve({
+            success: false,
+            exitCode: -1,
+            stdout: stdout,
+            stderr: `Error executing Onyx: ${error.message}\n\nNote: Make sure 'onyx' is installed and available in PATH.\nInstall from: https://onyxlang.io/install`,
+            executionTime: Date.now() - startTime
+          });
+        }
+      });
+    });
   }
 
   // Legacy compatibility methods
