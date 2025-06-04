@@ -1,139 +1,148 @@
-# Onyx Documentation MCP Server
+# Enhanced Onyx MCP Server
 
-A Model Context Protocol (MCP) server that provides AI systems with access to Onyx programming language documentation through web crawling and intelligent search.
+A Model Context Protocol (MCP) server that provides comprehensive access to Onyx programming language documentation, GitHub code examples, and web crawling capabilities.
 
-## Features
+## 🚀 Quick Start
 
-- **Web Crawler**: Automatically crawls Onyx documentation websites
-- **Smart Search**: Find relevant documentation by keywords, concepts, or function names
-- **Code Examples**: Extract and search through code examples
-- **Function Lookup**: Get detailed documentation for specific functions
-- **Section Browsing**: Browse documentation by categories or sections
+### 1. Installation
+```bash
+# Dependencies should already be installed, but if needed:
+npm install
+```
 
-## Setup
+### 2. Validation
+```bash
+# Run validation to check setup
+node validate.js
 
-1. **Install dependencies**:
-   ```bash
-   npm install
-   ```
+# Run comprehensive tests
+npm test
+```
 
-2. **Configure the crawler**: 
-   Edit `src/crawler.js` and update the `BASE_URLS` array to point to the actual Onyx documentation URLs:
-   ```javascript
-    const BASE_URLS = [
-      'https://docs.onyxlang.io/book/Overview.html',  // Book documentation
-      'https://docs.onyxlang.io/packages/core.html',  // Package documentation
-    ]; 
-   ```
+### 3. Data Population
+```bash
+# Crawl official Onyx documentation
+npm run crawl:docs
 
-3. **Crawl the documentation**:
-   ```bash
-   # Use configured URLs
-   npm run crawl
-   
-   # Or specify URLs directly
-   npm run crawl https://example.com/docs https://example.com/api
-   ```
-   This will create a `data/` directory with the crawled documentation.
+# Crawl GitHub repositories for Onyx code examples
+npm run crawl:github
 
-4. **Start the MCP server**:
-   ```bash
-   npm start
-   ```
+# Crawl everything
+npm run crawl:all
+```
 
-## Usage with Claude Desktop
+### 4. Start the Server
+```bash
+# Start the MCP server
+npm start
 
-Add this to your Claude Desktop MCP configuration:
+# Or start with auto-reload during development
+npm run dev
+```
+
+## 🛠️ Features
+
+### Documentation Tools
+- `search_onyx_docs` - Search official Onyx documentation
+- `crawl_onyx_docs` - Update documentation cache
+- `get_onyx_function_docs` - Get function documentation
+- `browse_onyx_sections` - Browse docs by section
+
+### GitHub Code Examples
+- `search_github_examples` - Search code examples by topic
+- `get_onyx_functions` - Get function definitions from GitHub
+- `get_onyx_structs` - Get struct definitions from GitHub
+- `crawl_github_repos` - Update GitHub code cache
+- `list_github_repos` - List discovered repositories
+
+### URL Crawling
+- `crawl_url` - Extract content from any URL
+- `search_all_sources` - Search across all data sources
+
+## 🔧 Configuration
+
+### GitHub Token (Optional but Recommended)
+```bash
+export GITHUB_TOKEN=your_github_token_here
+```
+
+This increases API rate limits for GitHub crawling.
+
+### Claude Desktop Configuration
+Add to your Claude Desktop config:
 
 ```json
 {
   "mcpServers": {
-    "onyx-docs": {
+    "onyx-enhanced-mcp": {
       "command": "node",
-      "args": ["/path/to/onyx-docs-mcp/src/server.js"]
+      "args": ["/path/to/onyx_mcp/src/server.js"],
+      "cwd": "/path/to/onyx_mcp"
     }
   }
 }
 ```
 
-## Available Tools
+## 📊 Data Structure
 
-### `search_onyx_docs`
-Search through Onyx documentation for specific topics, functions, or concepts.
+The server creates a `data/` directory with:
+- `onyx-docs.json` - Official documentation
+- `github/` - GitHub code examples and analysis
+- `urls/` - Crawled URL content
 
-**Parameters:**
-- `query` (string): Search keywords
-- `limit` (number, optional): Max results to return (default: 5)
+## 🧪 Testing
 
-### `get_onyx_examples`
-Find code examples for specific Onyx features or functions.
+The test suite validates:
+- ✅ File structure
+- ✅ Package.json validity  
+- ✅ Module imports
+- ✅ Data directory creation
+- ✅ SearchEngine functionality
+- ✅ URLCrawler configuration
+- ✅ GitHub crawler initialization
 
-**Parameters:**
-- `topic` (string): Topic to find examples for
-- `limit` (number, optional): Max examples to return (default: 3)
+## 📝 Example Usage
 
-### `get_onyx_function_docs`
-Get detailed documentation for a specific Onyx function or method.
+Once connected to Claude Desktop, you can ask:
+- "How do I create a struct in Onyx?"
+- "Show me examples of HTTP requests in Onyx"
+- "What are the available string functions?"
+- "Find examples of JSON parsing in Onyx code"
 
-**Parameters:**
-- `functionName` (string): Name of the function to look up
+## 🔄 Development
 
-### `browse_onyx_sections`
-Browse Onyx documentation by section or category.
+- `src/server.js` - Main MCP server
+- `src/lib/search-engine.js` - Search functionality
+- `src/lib/github-crawler.js` - GitHub API integration
+- `src/lib/url-crawler.js` - Web scraping
+- `src/docs-crawler.js` - Documentation scraping
+- `test-setup.js` - Test suite
 
-**Parameters:**
-- `section` (string): Section name (e.g., "getting started", "syntax", "stdlib")
+## 🐛 Troubleshooting
 
-## Customization
+### Test Failures
+1. Run `node validate.js` for quick validation
+2. Check file permissions
+3. Ensure Node.js 18+ is installed
+4. Verify all dependencies are installed
 
-### Crawler Configuration
-- **BASE_URLS**: Array of starting URLs for documentation crawling
-- **CRAWL_DELAY**: Delay between requests (default: 1000ms)
-- **Link Detection**: Modify `findDocLinks()` to match the site's link structure
-- **Multiple Domains**: Supports crawling from different domains/subdomains
+### GitHub Crawling Issues
+1. Check internet connection
+2. Set GITHUB_TOKEN for higher rate limits
+3. Reduce repo limit: `npm run crawl:github -- --limit 10`
 
-### Content Extraction
-- **CSS Selectors**: Update selectors in `extractContent()` to match the documentation site's HTML structure
-- **Content Filtering**: Modify which elements to remove (nav, footer, etc.)
+### Documentation Crawling Issues
+1. Check if docs.onyxlang.io is accessible
+2. Try force recrawl: `npm run crawl:docs -- --force`
 
-### Search Algorithm
-- **Scoring**: Adjust relevance scoring in `searchDocs()`
-- **Snippet Generation**: Customize how text snippets are generated
+## 📈 Stats
 
-## Example Usage
+Run `npm test` to see:
+- Total files crawled
+- Code examples found
+- Test pass rate
+- Setup validation
 
-Once connected to an AI system, you can ask questions like:
+---
 
-- "How do I declare variables in Onyx?"
-- "Show me examples of Onyx functions"
-- "What's the syntax for loops in Onyx?"
-- "Find documentation about memory management"
-
-## Data Storage
-
-The crawler saves data in two formats:
-- `data/onyx-docs.json`: Complete documentation with all metadata
-- `data/onyx-docs-index.json`: Simplified index for quick overview
-
-## Troubleshooting
-
-**No documentation found**: 
-- Check that the BASE_URL is correct
-- Verify the site allows crawling (check robots.txt)
-- Update CSS selectors if the site structure has changed
-
-**Poor search results**:
-- The search is currently keyword-based
-- Consider adding semantic search with embeddings for better results
-
-**Rate limiting**:
-- Increase CRAWL_DELAY if getting blocked
-- Add User-Agent rotation if needed
-
-## Contributing
-
-Feel free to submit issues and pull requests to improve the crawler or add features like:
-- Semantic search with embeddings
-- Better content extraction
-- Support for multiple documentation formats
-- Caching and incremental updates
+*This MCP server enhances Claude's knowledge of the Onyx programming language with real-time access to documentation, code examples, and community resources.*

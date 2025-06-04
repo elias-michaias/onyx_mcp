@@ -7,70 +7,155 @@ import {
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import GitHubOnyxCrawler from './lib/github-crawler.js';
+import { SearchEngine } from './lib/search-engine.js';
+import { URLCrawler } from './lib/url-crawler.js';
+import OnyxDocsCrawler from './docs-crawler.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-class OnyxDocsMCP {
+class EnhancedOnyxMCP {
   constructor() {
-    this.docs = [];
+    this.dataDir = path.join(__dirname, '../data');
+    this.searchEngine = new SearchEngine(this.dataDir);
+    
     this.server = new Server(
-      { name: 'onyx-docs-mcp', version: '1.0.0' },
+      { name: 'onyx-enhanced-mcp', version: '2.0.0' },
       { capabilities: { tools: {} } }
     );
     
     this.setupHandlers();
   }
 
-  async loadDocs() {
-    try {
-      const docsPath = path.join(__dirname, '../data/onyx-docs.json');
-      const data = await fs.readFile(docsPath, 'utf-8');
-      this.docs = JSON.parse(data);
-      console.log(`Loaded ${this.docs.length} Onyx documentation pages`);
-    } catch (error) {
-      console.error('Failed to load docs:', error.message);
-      console.log('Run "npm run crawl" first to generate documentation data');
-    }
-  }
-
   setupHandlers() {
+    // List all available tools
     this.server.setRequestHandler(ListToolsRequestSchema, async () => {
       return {
         tools: [
+          // Original documentation tools
           {
             name: 'search_onyx_docs',
-            description: 'Search Onyx documentation for specific topics, functions, or concepts',
+            description: 'Search official Onyx programming language documentation',
             inputSchema: {
               type: 'object',
               properties: {
-                query: {
-                  type: 'string',
-                  description: 'Search query (keywords, function names, concepts)'
-                },
-                limit: {
-                  type: 'number',
-                  description: 'Maximum number of results to return',
-                  default: 5
-                }
+                query: { type: 'string', description: 'Search query for documentation' },
+                limit: { type: 'number', description: 'Maximum number of results', default: 5 }
               },
               required: ['query']
             }
           },
+          {
+            name: 'crawl_onyx_docs',
+            description: 'Crawl and update official Onyx documentation',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                force: { type: 'boolean', description: 'Force recrawl even if recently updated', default: false }
+              }
+            }
+          },
+
+          // GitHub repository tools
+          {
+            name: 'search_github_examples',
+            description: 'Search Onyx code examples from GitHub repositories by topic',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                topic: { type: 'string', description: 'Topic to search for (e.g., "networking", "json", "http")' },
+                limit: { type: 'number', description: 'Maximum number of examples', default: 5 }
+              },
+              required: ['topic']
+            }
+          },
+          {
+            name: 'get_onyx_functions',
+            description: 'Get Onyx function definitions and examples from GitHub',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                functionName: { type: 'string', description: 'Function name to search for (optional)' },
+                limit: { type: 'number', description: 'Maximum number of examples', default: 10 }
+              }
+            }
+          },
+          {
+            name: 'get_onyx_structs',
+            description: 'Get Onyx struct definitions and examples from GitHub',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                structName: { type: 'string', description: 'Struct name to search for (optional)' },
+                limit: { type: 'number', description: 'Maximum number of examples', default: 10 }
+              }
+            }
+          },
+          {
+            name: 'crawl_github_repos',
+            description: 'Crawl GitHub repositories for Onyx code examples',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                repoLimit: { type: 'number', description: 'Maximum number of repositories to crawl', default: 20 },
+                force: { type: 'boolean', description: 'Force recrawl even if recently updated', default: false }
+              }
+            }
+          },
+          {
+            name: 'list_github_repos',
+            description: 'List all discovered GitHub repositories with Onyx code',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                sortBy: { type: 'string', enum: ['stars', 'name'], description: 'Sort repositories by', default: 'stars' }
+              }
+            }
+          },
+
+          // Arbitrary URL tools
+          {
+            name: 'crawl_url',
+            description: 'Crawl and extract content from any URL',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                url: { type: 'string', description: 'URL to crawl' },
+                extractCode: { type: 'boolean', description: 'Extract code blocks specifically', default: true }
+              },
+              required: ['url']
+            }
+          },
+
+          // Unified search tools
+          {
+            name: 'search_all_sources',
+            description: 'Search all crawled content (docs, GitHub, URLs)',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                query: { type: 'string', description: 'Search query' },
+                sources: { 
+                  type: 'array', 
+                  items: { type: 'string', enum: ['docs', 'github'] },
+                  description: 'Sources to search in',
+                  default: ['docs', 'github']
+                },
+                limit: { type: 'number', description: 'Maximum number of results', default: 10 }
+              },
+              required: ['query']
+            }
+          },
+
+          // Legacy tools for compatibility
           {
             name: 'get_onyx_examples',
             description: 'Get code examples for specific Onyx features or functions',
             inputSchema: {
               type: 'object',
               properties: {
-                topic: {
-                  type: 'string',
-                  description: 'Topic or feature to find examples for'
-                },
-                limit: {
-                  type: 'number',
-                  description: 'Maximum number of examples to return',
-                  default: 3
-                }
+                topic: { type: 'string', description: 'Topic or feature to find examples for' },
+                limit: { type: 'number', description: 'Maximum number of examples to return', default: 3 }
               },
               required: ['topic']
             }
@@ -81,10 +166,7 @@ class OnyxDocsMCP {
             inputSchema: {
               type: 'object',
               properties: {
-                functionName: {
-                  type: 'string',
-                  description: 'Name of the function to look up'
-                }
+                functionName: { type: 'string', description: 'Name of the function to look up' }
               },
               required: ['functionName']
             }
@@ -95,10 +177,7 @@ class OnyxDocsMCP {
             inputSchema: {
               type: 'object',
               properties: {
-                section: {
-                  type: 'string',
-                  description: 'Section name (e.g., "getting started", "syntax", "stdlib")'
-                }
+                section: { type: 'string', description: 'Section name (e.g., "getting started", "syntax", "stdlib")' }
               },
               required: ['section']
             }
@@ -107,212 +186,245 @@ class OnyxDocsMCP {
       };
     });
 
+    // Handle tool calls
     this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const { name, arguments: args } = request.params;
 
-      switch (name) {
-        case 'search_onyx_docs':
-          return await this.searchDocs(args.query, args.limit || 5);
-        
-        case 'get_onyx_examples':
-          return await this.getExamples(args.topic, args.limit || 3);
-        
-        case 'get_onyx_function_docs':
-          return await this.getFunctionDocs(args.functionName);
-        
-        case 'browse_onyx_sections':
-          return await this.browseSections(args.section);
-        
-        default:
-          throw new Error(`Unknown tool: ${name}`);
+      try {
+        switch (name) {
+          // Documentation tools
+          case 'search_onyx_docs':
+            return await this.searchOnyxDocs(args.query, args.limit);
+          
+          case 'crawl_onyx_docs':
+            return await this.crawlOnyxDocs(args.force);
+
+          // GitHub tools
+          case 'search_github_examples':
+            return await this.searchGitHubExamples(args.topic, args.limit);
+          
+          case 'get_onyx_functions':
+            return await this.getOnyxFunctions(args.functionName, args.limit);
+          
+          case 'get_onyx_structs':
+            return await this.getOnyxStructs(args.structName, args.limit);
+          
+          case 'crawl_github_repos':
+            return await this.crawlGitHubRepos(args.repoLimit, args.force);
+          
+          case 'list_github_repos':
+            return await this.listGitHubRepos(args.sortBy);
+
+          // URL tools
+          case 'crawl_url':
+            return await this.crawlUrl(args.url, args.extractCode);
+
+          // Unified search
+          case 'search_all_sources':
+            return await this.searchAllSources(args.query, args.sources, args.limit);
+
+          // Legacy compatibility tools
+          case 'get_onyx_examples':
+            return await this.getOnyxExamples(args.topic, args.limit);
+          
+          case 'get_onyx_function_docs':
+            return await this.getOnyxFunctionDocs(args.functionName);
+          
+          case 'browse_onyx_sections':
+            return await this.browseOnyxSections(args.section);
+
+          default:
+            throw new Error(`Unknown tool: ${name}`);
+        }
+      } catch (error) {
+        return {
+          content: [{
+            type: 'text',
+            text: `Error: ${error.message}`
+          }]
+        };
       }
     });
   }
 
-  async searchDocs(query, limit) {
-    const queryLower = query.toLowerCase();
-    const results = [];
+  // Documentation methods
+  async searchOnyxDocs(query, limit = 5) {
+    const results = await this.searchEngine.searchDocs(query, limit);
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify(results, null, 2)
+      }]
+    };
+  }
 
-    for (const doc of this.docs) {
-      let score = 0;
-      const titleMatch = doc.title.toLowerCase().includes(queryLower);
-      const contentMatch = doc.content.toLowerCase().includes(queryLower);
-      
-      if (titleMatch) score += 10;
-      if (contentMatch) score += 1;
-      
-      // Check headings
-      for (const heading of doc.headings) {
-        if (heading.text.toLowerCase().includes(queryLower)) {
-          score += 5;
-        }
-      }
-      
-      if (score > 0) {
-        results.push({
-          ...doc,
-          score,
-          snippet: this.getSnippet(doc.content, queryLower)
-        });
-      }
-    }
-
-    results.sort((a, b) => b.score - a.score);
+  async crawlOnyxDocs(force = false) {
+    const crawler = new OnyxDocsCrawler({ force });
+    await crawler.crawl();
     
     return {
-      content: [
-        {
+      content: [{
+        type: 'text',
+        text: 'Successfully crawled Onyx documentation. Use search_onyx_docs to query the updated content.'
+      }]
+    };
+  }
+
+  // GitHub methods
+  async searchGitHubExamples(topic, limit = 5) {
+    const results = await this.searchEngine.searchGitHubExamples(topic, limit);
+    
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify(results, null, 2)
+      }]
+    };
+  }
+
+  async getOnyxFunctions(functionName, limit = 10) {
+    const results = await this.searchEngine.getOnyxFunctionExamples(functionName, limit);
+    
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify(results, null, 2)
+      }]
+    };
+  }
+
+  async getOnyxStructs(structName, limit = 10) {
+    const results = await this.searchEngine.getOnyxStructExamples(structName, limit);
+    
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify(results, null, 2)
+      }]
+    };
+  }
+
+  async crawlGitHubRepos(repoLimit = 20, force = false) {
+    const crawler = new GitHubOnyxCrawler({
+      outputDir: path.join(this.dataDir, 'github'),
+      debug: true
+    });
+
+    await crawler.crawlAllRepositories(repoLimit);
+
+    return {
+      content: [{
+        type: 'text',
+        text: `Successfully crawled ${repoLimit} GitHub repositories for Onyx code. Use search_github_examples to explore the examples.`
+      }]
+    };
+  }
+
+  async listGitHubRepos(sortBy = 'stars') {
+    try {
+      const reposPath = path.join(this.dataDir, 'github', 'repositories.json');
+      let repos = JSON.parse(await fs.readFile(reposPath, 'utf8'));
+      
+      // Sort repositories
+      switch (sortBy) {
+        case 'stars':
+          repos.sort((a, b) => b.stars - a.stars);
+          break;
+        case 'name':
+          repos.sort((a, b) => a.name.localeCompare(b.name));
+          break;
+      }
+
+      return {
+        content: [{
           type: 'text',
           text: JSON.stringify({
-            query,
-            totalResults: results.length,
-            results: results.slice(0, limit).map(r => ({
-              title: r.title,
-              url: r.url,
-              snippet: r.snippet,
-              headings: r.headings.map(h => h.text).slice(0, 3)
+            totalRepos: repos.length,
+            sortedBy: sortBy,
+            repositories: repos.map(repo => ({
+              name: repo.fullName,
+              description: repo.description,
+              stars: repo.stars,
+              url: repo.url
             }))
           }, null, 2)
-        }
-      ]
-    };
+        }]
+      };
+    } catch (error) {
+      return {
+        content: [{
+          type: 'text',
+          text: `Repository list not available. Run crawl_github_repos first. Error: ${error.message}`
+        }]
+      };
+    }
   }
 
-  async getExamples(topic, limit) {
-    const topicLower = topic.toLowerCase();
-    const examples = [];
+  // URL crawling methods
+  async crawlUrl(url, extractCode = true) {
+    const crawler = new URLCrawler({
+      extractCode,
+      outputDir: path.join(this.dataDir, 'urls'),
+      debug: true
+    });
 
-    for (const doc of this.docs) {
-      for (const example of doc.codeExamples) {
-        const contextMatch = example.context.toLowerCase().includes(topicLower);
-        const codeMatch = example.code.toLowerCase().includes(topicLower);
-        
-        if (contextMatch || codeMatch) {
-          examples.push({
-            code: example.code,
-            context: example.context,
-            source: doc.title,
-            url: doc.url
-          });
-        }
-      }
-    }
+    const result = await crawler.crawlSingle(url);
 
     return {
-      content: [
-        {
-          type: 'text',
-          text: JSON.stringify({
-            topic,
-            totalExamples: examples.length,
-            examples: examples.slice(0, limit)
-          }, null, 2)
-        }
-      ]
+      content: [{
+        type: 'text',
+        text: JSON.stringify(result, null, 2)
+      }]
     };
   }
 
-  async getFunctionDocs(functionName) {
-    const funcLower = functionName.toLowerCase();
-    const matches = [];
-
-    for (const doc of this.docs) {
-      // Look for function in title or headings
-      if (doc.title.toLowerCase().includes(funcLower)) {
-        matches.push(doc);
-        continue;
-      }
-      
-      for (const heading of doc.headings) {
-        if (heading.text.toLowerCase().includes(funcLower)) {
-          matches.push(doc);
-          break;
-        }
-      }
-      
-      // Look for function in code examples
-      for (const example of doc.codeExamples) {
-        if (example.code.toLowerCase().includes(funcLower)) {
-          matches.push(doc);
-          break;
-        }
-      }
-    }
-
-    return {
-      content: [
-        {
-          type: 'text',
-          text: JSON.stringify({
-            functionName,
-            matches: matches.slice(0, 3).map(doc => ({
-              title: doc.title,
-              url: doc.url,
-              content: doc.content.substring(0, 800) + '...',
-              codeExamples: doc.codeExamples.filter(ex => 
-                ex.code.toLowerCase().includes(funcLower)
-              ).slice(0, 2)
-            }))
-          }, null, 2)
-        }
-      ]
-    };
-  }
-
-  async browseSections(section) {
-    const sectionLower = section.toLowerCase();
-    const sections = [];
-
-    for (const doc of this.docs) {
-      const urlMatch = doc.url.toLowerCase().includes(sectionLower);
-      const titleMatch = doc.title.toLowerCase().includes(sectionLower);
-      
-      if (urlMatch || titleMatch) {
-        sections.push({
-          title: doc.title,
-          url: doc.url,
-          headings: doc.headings.map(h => h.text),
-          summary: doc.content.substring(0, 300) + '...'
-        });
-      }
-    }
-
-    return {
-      content: [
-        {
-          type: 'text',
-          text: JSON.stringify({
-            section,
-            totalSections: sections.length,
-            sections: sections.slice(0, 10)
-          }, null, 2)
-        }
-      ]
-    };
-  }
-
-  getSnippet(content, query, contextLength = 150) {
-    const index = content.toLowerCase().indexOf(query);
-    if (index === -1) return content.substring(0, contextLength) + '...';
+  // Unified search
+  async searchAllSources(query, sources = ['docs', 'github'], limit = 10) {
+    const results = await this.searchEngine.searchAll(query, sources, limit);
     
-    const start = Math.max(0, index - contextLength / 2);
-    const end = Math.min(content.length, index + query.length + contextLength / 2);
-    
-    return (start > 0 ? '...' : '') + 
-           content.substring(start, end) + 
-           (end < content.length ? '...' : '');
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify(results, null, 2)
+      }]
+    };
+  }
+
+  // Legacy compatibility methods
+  async getOnyxExamples(topic, limit = 3) {
+    // Use GitHub examples as the primary source now
+    const results = await this.searchGitHubExamples(topic, limit);
+    return results;
+  }
+
+  async getOnyxFunctionDocs(functionName) {
+    // Search both docs and GitHub
+    const results = await this.searchAllSources(functionName, ['docs', 'github'], 5);
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          functionName,
+          searchResults: results
+        }, null, 2)
+      }]
+    };
+  }
+
+  async browseOnyxSections(section) {
+    // Use documentation search
+    const results = await this.searchOnyxDocs(section, 10);
+    return results;
   }
 
   async start() {
-    await this.loadDocs();
-    
     const transport = new StdioServerTransport();
     await this.server.connect(transport);
     
-    console.error('Onyx Docs MCP server running');
+    console.error('Enhanced Onyx MCP Server running with GitHub and URL crawling capabilities...');
   }
 }
 
 // Start the server
-const server = new OnyxDocsMCP();
+const server = new EnhancedOnyxMCP();
 server.start().catch(console.error);
