@@ -157,8 +157,6 @@ The server provides these **read-only** search and query tools to Claude:
 
 ### 📚 Documentation
 - `search_onyx_docs` - Search official documentation
-- `browse_onyx_sections` - Browse by section
-- `get_onyx_function_docs` - Function documentation
 
 ### 🐙 GitHub Integration  
 - `search_github_examples` - Search code by topic
@@ -168,10 +166,12 @@ The server provides these **read-only** search and query tools to Claude:
 
 ### 🔍 Unified Search
 - `search_all_sources` - Search across all data sources
-- `get_onyx_examples` - Legacy compatibility for examples
 
 ### 🚀 Code Execution
 - `run_onyx_code` - Execute Onyx code and return output/errors for testing and debugging
+- `run_wasm` - Execute WebAssembly code and return output/errors for testing and debugging 
+- `build_onyx_code` - Build Onyx code file using "onyx build" in a specified directory
+- `onyx_pkg_build` - Build an Onyx package using "onyx pkg build" in a specified directory
 
 ### ⚠️ Important Note
 Crawling tools are available through the CLI but **intentionally NOT accessible** through the MCP interface. This ensures clean separation between data collection and query functionality.
@@ -303,26 +303,52 @@ Benefits:
 
 ## 🔄 Code Testing & Feedback Loop
 
-The `run_onyx_code` tool enables Claude to test and refine Onyx code through an iterative feedback loop:
+The code execution tools enable Claude to test, build, and refine Onyx code through iterative feedback:
+
+### Available Tools:
+- **`run_onyx_code`** - Execute code in sandbox for quick testing
+- **`build_onyx_code`** - Build code files in user's specified directory
+- **`onyx_pkg_build`** - Build complete Onyx packages in user's project directory
 
 ### How it Works:
 1. **Claude writes Onyx code** based on your requirements
-2. **Executes the code** using `run_onyx_code` tool
-3. **Reads compilation/runtime errors** from the output
-4. **Analyzes the errors** and adjusts the code
-5. **Repeats the process** until the code works correctly
+2. **Tests with `run_onyx_code`** for quick validation (sandbox)
+3. **Builds with `build_onyx_code`** in your project directory
+4. **Reads build/compilation errors** from the output
+5. **Analyzes and fixes issues** - syntax, imports, dependencies
+6. **Builds packages with `onyx_pkg_build`** in your project directory
+7. **Repeats until success** - working, compiled code in your directory!
 
-### Example Workflow:
+### Example Workflows:
+
+#### Quick Testing:
 ```
 User: "Write a function to calculate fibonacci numbers"
 
 1. Claude writes initial code
-2. Tests with run_onyx_code
-3. Sees compilation error about syntax
-4. Fixes syntax and tests again
-5. Sees runtime error about logic
-6. Fixes logic and tests again
-7. Code now runs successfully!
+2. Tests with run_onyx_code (sandbox)
+3. Sees errors and fixes them
+4. Code runs successfully
+```
+
+#### Project Building:
+```
+User: "Build this code in my project at /home/user/myproject"
+
+1. Claude uses build_onyx_code with directory: "/home/user/myproject"
+2. Sees build errors and fixes imports
+3. Creates working executable in user's directory
+4. User can run the built program directly
+```
+
+#### Package Development:
+```
+User: "Build my Onyx package in /home/user/onyx-lib"
+
+1. Claude uses onyx_pkg_build with directory: "/home/user/onyx-lib"
+2. Fixes package configuration issues
+3. Creates complete built package in user's directory
+4. User can distribute/use the package
 ```
 
 ### Benefits:

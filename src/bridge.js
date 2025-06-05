@@ -2,10 +2,10 @@
 
 /**
  * MCP-to-HTTP Bridge
- * 
+ *
  * This bridge server accepts MCP requests via stdio (from Claude Desktop)
  * and forwards them to the Onyx MCP HTTP server, then returns the responses.
- * 
+ *
  * Usage:
  * 1. Start the HTTP server: npm run http
  * 2. Run this bridge: npm run bridge
@@ -28,7 +28,7 @@ class McpHttpBridge {
       { name: 'onyx-mcp-bridge', version: '1.0.0' },
       { capabilities: { tools: {} } }
     );
-    
+
     this.setupHandlers();
   }
 
@@ -40,11 +40,11 @@ class McpHttpBridge {
       },
       ...options
     });
-    
+
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
-    
+
     return response.json();
   }
 
@@ -53,7 +53,7 @@ class McpHttpBridge {
     this.server.setRequestHandler(ListToolsRequestSchema, async () => {
       try {
         const response = await this.fetchJson(`${this.httpServerUrl}/tools`);
-        
+
         // Convert HTTP API format to MCP format
         const mcpTools = response.tools.map(tool => ({
           name: tool.name,
@@ -81,7 +81,7 @@ class McpHttpBridge {
         const endpoint = this.getHttpEndpoint(name);
         const method = this.getHttpMethod(name);
         const url = `${this.httpServerUrl}${endpoint}`;
-        
+
         let response;
         if (method === 'GET') {
           const params = new URLSearchParams(args).toString();
@@ -103,7 +103,7 @@ class McpHttpBridge {
         };
       } catch (error) {
         console.error(`Tool ${name} failed:`, error.message);
-        
+
         return {
           content: [{
             type: 'text',
@@ -116,22 +116,22 @@ class McpHttpBridge {
 
   convertParametersToJsonSchema(parameters) {
     const properties = {};
-    
+
     for (const [key, param] of Object.entries(parameters)) {
       properties[key] = {
         type: param.type,
         description: param.description
       };
-      
+
       if (param.default !== undefined) {
         properties[key].default = param.default;
       }
-      
+
       if (param.enum) {
         properties[key].enum = param.enum;
       }
     }
-    
+
     return properties;
   }
 
@@ -142,23 +142,8 @@ class McpHttpBridge {
   }
 
   getHttpEndpoint(toolName) {
-    // Map MCP tool names to HTTP endpoints
-    const endpointMap = {
-      'search_onyx_docs': '/tools/search_onyx_docs',
-      'crawl_onyx_docs': '/tools/crawl_onyx_docs',
-      'search_github_examples': '/tools/search_github_examples',
-      'get_onyx_functions': '/tools/get_onyx_functions',
-      'get_onyx_structs': '/tools/get_onyx_structs',
-      'crawl_github_repos': '/tools/crawl_github_repos',
-      'list_github_repos': '/tools/list_github_repos',
-      'crawl_url': '/tools/crawl_url',
-      'search_all_sources': '/tools/search_all_sources',
-      'get_onyx_examples': '/tools/get_onyx_examples',
-      'get_onyx_function_docs': '/tools/get_onyx_function_docs',
-      'browse_onyx_sections': '/tools/browse_onyx_sections'
-    };
-
-    return endpointMap[toolName] || `/tools/${toolName}`;
+    // All tools follow the same pattern: /tools/{toolName}
+    return `/tools/${toolName}`;
   }
 
   getHttpMethod(toolName) {
@@ -186,7 +171,7 @@ class McpHttpBridge {
 export default async function startBridge() {
   const httpServerUrl = process.env.HTTP_SERVER_URL || 'http://localhost:3001';
   const bridge = new McpHttpBridge(httpServerUrl);
-  
+
   await bridge.start();
 }
 
@@ -195,24 +180,24 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   // Parse command line arguments for npx usage
   const args = process.argv.slice(2);
   let httpServerUrl = 'https://mcp.onyxlang.io'; // Default to hosted server for npx
-  
+
   // Look for --url argument
   const urlIndex = args.indexOf('--url');
   if (urlIndex !== -1 && args[urlIndex + 1]) {
     httpServerUrl = args[urlIndex + 1];
   }
-  
+
   // Look for -u argument
   const uIndex = args.indexOf('-u');
   if (uIndex !== -1 && args[uIndex + 1]) {
     httpServerUrl = args[uIndex + 1];
   }
-  
+
   // Use environment variable if set
   if (process.env.HTTP_SERVER_URL) {
     httpServerUrl = process.env.HTTP_SERVER_URL;
   }
-  
+
   const bridge = new McpHttpBridge(httpServerUrl);
 
   bridge.start().catch((error) => {
