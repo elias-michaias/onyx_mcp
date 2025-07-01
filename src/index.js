@@ -5,8 +5,6 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 import { Command } from 'commander';
-import { fileURLToPath } from 'url';
-import path from 'path';
 
 // Import core modules
 import { startMcpServer } from './mcp-server.js';
@@ -16,7 +14,6 @@ import { crawlGitHub } from './crawlers/github.js';
 import { crawlUrl } from './crawlers/urls.js';
 import { runTests } from './test.js';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const program = new Command();
 
 program
@@ -36,7 +33,7 @@ program
     startMcpServer(options.dev);
   });
 
-// HTTP Server command  
+// HTTP Server command
 program
   .command('http')
   .description('Start the HTTP server for REST API access')
@@ -46,7 +43,7 @@ program
     console.log('🌐 Starting Onyx MCP HTTP Server...');
     const port = parseInt(options.port);
     const server = new OnyxMcpHttpServer(port);
-    
+
     try {
       await server.start();
       if (options.dev) {
@@ -64,11 +61,9 @@ program
   .description('Start the MCP-to-HTTP bridge (connects MCP to HTTP server)')
   .option('-u, --url <url>', 'HTTP server URL', 'http://localhost:3001')
   .action(async (options) => {
-    console.log('🌉 Starting MCP-to-HTTP Bridge...');
-    
     // Set environment variable for the bridge
     process.env.HTTP_SERVER_URL = options.url;
-    
+
     // Import and start the bridge
     const { default: startBridge } = await import('./bridge.js');
     await startBridge();
@@ -111,13 +106,13 @@ crawlCmd
   .option('-l, --limit <number>', 'Repository limit for GitHub crawl', '20')
   .action(async (repositories, options) => {
     console.log('🔄 Starting comprehensive crawl to populate MCP data...');
-    
+
     // Crawl docs
     await crawlDocumentation({ force: options.force });
-    
+
     // Crawl GitHub - let github.js handle defaults if no repos provided
     await crawlGitHub(repositories.length > 0 ? repositories : null, { limit: parseInt(options.limit) });
-    
+
     console.log('✅ Comprehensive crawl complete! MCP is now ready to use.');
   });
 

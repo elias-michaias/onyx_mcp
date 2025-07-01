@@ -4,18 +4,73 @@ A Model Context Protocol (MCP) server providing search and query access to Onyx 
 
 ## 🚀 Quick Start
 
-### Installation & Setup
+### ⚡ Instant Access with NPX (No Installation Required!)
 
+**Configure Claude Desktop (or other MCP-compatible LLM):**
+```json
+{
+  "mcpServers": {
+    "onyx": {
+      "command": "npx",
+      "args": ["@onyxlang/mcp-server", "bridge", "--url", "https://mcp.onyxlang.io"]
+    }
+  }
+}
+```
+
+🎆 **That's it!** No installation, no setup, no data crawling needed. You get instant access to the latest Onyx documentation and examples.
+
+### Installation
+
+#### Option 1: Install from npm (Recommended)
 ```bash
-# Install dependencies  
-npm install
+# Install globally
+npm install -g @onyxlang/mcp-server
 
-# Create environment configuration
+# Or install locally in your project
+npm install @onyxlang/mcp-server
+```
+
+#### Option 2: Install from source
+```bash
+git clone https://github.com/onyx-lang/onyx-mcp-server.git
+cd onyx-mcp-server
+npm install
 cp .env.example .env
 # Edit .env and add your GitHub token (optional but recommended)
+```
 
-# Validate installation
-npm run validate
+### Usage
+
+#### If installed globally:
+```bash
+# Start MCP server
+onyx-mcp server
+
+# Start HTTP server
+onyx-mcp http
+
+# Start bridge to hosted server
+onyx-mcp bridge --url https://mcp.onyxlang.io
+
+# Crawl data (if running locally)
+onyx-mcp crawl all
+```
+
+#### If installed locally or from source:
+```bash
+# Use npm scripts with arguments
+npm start              # MCP server
+npm run http           # HTTP server on default port (3001)
+npm run http -- --port 3002  # HTTP server on custom port
+npm run bridge         # Bridge to default (localhost:3001)
+npm run bridge -- --url https://mcp.onyxlang.io  # Bridge to hosted server
+npm run crawl:all      # Crawl all data
+
+# Or run directly
+node src/index.js server
+node src/index.js http --port 3002
+node src/index.js bridge --url https://mcp.onyxlang.io
 ```
 
 ### Basic Usage
@@ -26,9 +81,11 @@ npm start
 
 # Start the HTTP server for REST API access
 npm run http
+npm run http -- --port 3002  # Custom port
 
 # Start the MCP-to-HTTP bridge (connects to local or remote HTTP server)
 npm run bridge
+npm run bridge -- --url https://mcp.onyxlang.io  # Connect to hosted server
 
 # Run with development mode
 npm run dev        # MCP server
@@ -53,6 +110,13 @@ node src/index.js http            # Start HTTP server
 node src/index.js http --port 3002 # HTTP server on custom port
 node src/index.js bridge          # Start MCP-to-HTTP bridge
 node src/index.js bridge --url https://mcp.onyxlang.io # Connect to hosted server
+
+# Using npm scripts (with argument passing)
+npm start                         # MCP server
+npm run http                      # HTTP server (port 3001)
+npm run http -- --port 3002       # HTTP server on custom port
+npm run bridge                    # Bridge to localhost:3001
+npm run bridge -- --url https://mcp.onyxlang.io  # Bridge to hosted server
 
 # Data crawling (CLI only - NOT accessible through MCP)
 node src/index.js crawl docs                    # Documentation only
@@ -93,8 +157,6 @@ The server provides these **read-only** search and query tools to Claude:
 
 ### 📚 Documentation
 - `search_onyx_docs` - Search official documentation
-- `browse_onyx_sections` - Browse by section
-- `get_onyx_function_docs` - Function documentation
 
 ### 🐙 GitHub Integration  
 - `search_github_examples` - Search code by topic
@@ -104,7 +166,12 @@ The server provides these **read-only** search and query tools to Claude:
 
 ### 🔍 Unified Search
 - `search_all_sources` - Search across all data sources
-- `get_onyx_examples` - Legacy compatibility for examples
+
+### 🚀 Code Execution
+- `run_onyx_code` - Execute Onyx code and return output/errors for testing and debugging
+- `run_wasm` - Execute WebAssembly code and return output/errors for testing and debugging 
+- `build_onyx_code` - Build Onyx code file using "onyx build" in a specified directory
+- `onyx_pkg_build` - Build an Onyx package using "onyx pkg build" in a specified directory
 
 ### ⚠️ Important Note
 Crawling tools are available through the CLI but **intentionally NOT accessible** through the MCP interface. This ensures clean separation between data collection and query functionality.
@@ -124,13 +191,27 @@ MAX_CRAWL_LIMIT=50
 
 ## 🌐 Claude Desktop Integration
 
-You can connect to the Onyx MCP in two ways:
+You can connect to the Onyx MCP in multiple ways:
 
-### Option 1: Local MCP Server (Recommended for Development)
+### ⚡ Option 1: NPX Bridge (Zero Installation)
+
+**For hosted server (always up-to-date):**
+```json
+{
+  "mcpServers": {
+    "onyx": {
+      "command": "npx",
+      "args": ["@onyxlang/mcp-server", "bridge", "--url", "https://mcp.onyxlang.io"]
+    }
+  }
+}
+```
+
+### Option 2: Local MCP Server (For Development)
 ```json
 {
  "mcpServers": {
-   "onyx_mcp": {
+   "onyx": {
      "command": "node",
      "args": ["/path/to/onyx_mcp/src/index.js", "server"]
    }
@@ -138,11 +219,11 @@ You can connect to the Onyx MCP in two ways:
 }
 ```
 
-### Option 2: Connect to Hosted Server via Bridge
+### Option 3: Connect to Custom Hosted Server via Bridge
 ```json
 {
  "mcpServers": {
-   "onyx_mcp": {
+   "onyx": {
      "command": "node",
      "args": ["/path/to/onyx_mcp/src/index.js", "bridge", "--url", "https://mcp.onyxlang.io"],
    }
@@ -150,7 +231,7 @@ You can connect to the Onyx MCP in two ways:
 }
 ```
 
-### Option 3: Local HTTP Server + Bridge
+### Option 4: Local HTTP Server + Bridge
 For testing the bridge locally:
 
 1. **Start the HTTP server:**
@@ -161,15 +242,13 @@ For testing the bridge locally:
    ```json
    {
      "mcpServers": {
-       "onyx_mcp": {
+       "onyx": {
          "command": "node",
          "args": ["/path/to/onyx_mcp/src/index.js", "bridge", "--url", "http://localhost:3002"]
        }
      }
    }
    ```
-
-## 🚀 Quick Start Guide
 
 ### For Development (Local Setup)
 1. **Clone and setup:**
@@ -200,9 +279,9 @@ For testing the bridge locally:
    npm install
    ```
 
-2. **Start bridge to hosted server:**
+2. **Start HTTP server:**
    ```bash
-   npm run bridge -- --url https://mcp.onyxlang.io
+   npm run http 
    ```
 
 3. **Configure Claude Desktop** with bridge (see integration section above)
@@ -221,6 +300,69 @@ Benefits:
 - ✅ Always up-to-date with latest Onyx information
 - ✅ Same MCP interface, different backend
 - ✅ Easy switching between local and remote servers
+
+## 🔄 Code Testing & Feedback Loop
+
+The code execution tools enable Claude to test, build, and refine Onyx code through iterative feedback:
+
+### Available Tools:
+- **`run_onyx_code`** - Execute code in sandbox for quick testing
+- **`build_onyx_code`** - Build code files in user's specified directory
+- **`onyx_pkg_build`** - Build complete Onyx packages in user's project directory
+
+### How it Works:
+1. **Claude writes Onyx code** based on your requirements
+2. **Tests with `run_onyx_code`** for quick validation (sandbox)
+3. **Builds with `build_onyx_code`** in your project directory
+4. **Reads build/compilation errors** from the output
+5. **Analyzes and fixes issues** - syntax, imports, dependencies
+6. **Builds packages with `onyx_pkg_build`** in your project directory
+7. **Repeats until success** - working, compiled code in your directory!
+
+### Example Workflows:
+
+#### Quick Testing:
+```
+User: "Write a function to calculate fibonacci numbers"
+
+1. Claude writes initial code
+2. Tests with run_onyx_code (sandbox)
+3. Sees errors and fixes them
+4. Code runs successfully
+```
+
+#### Project Building:
+```
+User: "Build this code in my project at /home/user/myproject"
+
+1. Claude uses build_onyx_code with directory: "/home/user/myproject"
+2. Sees build errors and fixes imports
+3. Creates working executable in user's directory
+4. User can run the built program directly
+```
+
+#### Package Development:
+```
+User: "Build my Onyx package in /home/user/onyx-lib"
+
+1. Claude uses onyx_pkg_build with directory: "/home/user/onyx-lib"
+2. Fixes package configuration issues
+3. Creates complete built package in user's directory
+4. User can distribute/use the package
+```
+
+### Benefits:
+- ✅ **Self-correcting code** - Claude can fix its own mistakes
+- ✅ **Real validation** - Actually runs the code, not just syntax checking
+- ✅ **Learning from errors** - Improves suggestions based on Onyx compiler feedback
+- ✅ **Iterative refinement** - Keeps improving until code works perfectly
+- ✅ **Confidence in results** - You know the code actually compiles and runs
+
+### Requirements:
+- **Onyx compiler** must be installed and available in PATH
+- Install from: https://onyxlang.io/
+- The tool executes code in a sandboxed temporary directory
+- Default timeout of 10 seconds (configurable) prevents infinite loops
 
 ## 📊 Data Sources & Crawling
 

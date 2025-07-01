@@ -1,9 +1,15 @@
 {
-  "name": "onyx_mcp",
+  "name": "@onyxlang/mcp-server",
   "version": "2.0.0",
-  "description": "MCP server for Onyx programming language with documentation, GitHub examples, and URL crawling",
+  "description": "Model Context Protocol (MCP) server for Onyx programming language with documentation, GitHub examples, and bridge connectivity",
   "main": "src/index.js",
+  "bin": {
+    "onyx-mcp": "src/index.js"
+  },
   "type": "module",
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "scripts": {
     "start": "node src/index.js server",
     "dev": "node src/index.js server --dev",
@@ -14,7 +20,8 @@
     "validate": "node src/index.js validate",
     "crawl:docs": "node src/index.js crawl docs",
     "crawl:github": "node src/index.js crawl github",
-    "crawl:all": "node src/index.js crawl all"
+    "crawl:all": "node src/index.js crawl all",
+    "prepublishOnly": "npm run validate && npm run test"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^0.5.0",
@@ -30,10 +37,36 @@
   },
   "keywords": [
     "mcp",
+    "model-context-protocol",
     "onyx",
-    "programming",
-    "documentation"
+    "onyx-lang",
+    "programming-language",
+    "documentation",
+    "github",
+    "claude",
+    "ai",
+    "assistant",
+    "bridge",
+    "server"
   ],
-  "author": "Your Name",
-  "license": "MIT"
+  "author": {
+    "name": "Onyx Language Team",
+    "url": "https://onyxlang.io"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/onyx-lang/onyx-mcp-server.git"
+  },
+  "bugs": {
+    "url": "https://github.com/onyx-lang/onyx-mcp-server/issues"
+  },
+  "homepage": "https://github.com/onyx-lang/onyx-mcp-server#readme",
+  "files": [
+    "src/",
+    "README.md",
+    "LICENSE",
+    ".env.example",
+    "claude-desktop-config.example.json"
+  ]
 }

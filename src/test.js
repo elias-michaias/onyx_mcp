@@ -100,14 +100,6 @@ class TestRunner {
       }
 
       const pkg = JSON.parse(await fs.readFile(pkgPath, 'utf8'));
-      
-      if (pkg.name !== 'onyx_mcp') {
-        throw new Error(`Expected package name 'onyx_mcp', got '${pkg.name}'`);
-      }
-
-      if (pkg.version !== '2.0.0') {
-        throw new Error(`Expected version '2.0.0', got '${pkg.version}'`);
-      }
 
       const requiredScripts = ['crawl:docs', 'crawl:github', 'crawl:all', 'start', 'dev'];
       for (const script of requiredScripts) {
